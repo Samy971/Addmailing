@@ -40,10 +40,11 @@ if not api_key_input:
     st.warning("💡 Veuillez entrer votre clé API pour continuer.")
     st.stop()
 
+# Vérification de la clé API avec modèle actif
 try:
     test_client = anthropic.Anthropic(api_key=api_key_input)
     test_client.messages.create(
-        model="claude-3-sonnet-20240229",
+        model="claude-3-haiku-20240307",
         max_tokens=10,
         messages=[{"role": "user", "content": "Ping"}]
     )
@@ -56,9 +57,13 @@ except Exception as e:
 st.markdown('<div class="section-title">📤 1. Dépose ton fichier CSV Sales Navigator</div>', unsafe_allow_html=True)
 uploaded_file = st.file_uploader("Fichier CSV (séparateur `;`)", type="csv")
 
-# ---------- 2. MODELE ----------
+# ---------- 2. MODÈLE À JOUR ----------
 st.markdown('<div class="section-title">🧠 2. Choisis le modèle Claude</div>', unsafe_allow_html=True)
-model_choice = st.selectbox("Modèle", ["claude-3-sonnet-20240229", "claude-3-opus-20240229"])
+model_choice = st.selectbox("Modèle", [
+    "claude-3-sonnet-20240601",
+    "claude-3-opus-20240601",
+    "claude-3-haiku-20240307"
+])
 
 # ---------- 3. PROMPT ----------
 st.markdown('<div class="section-title">✍️ 3. Rédige ou recharge ton prompt</div>', unsafe_allow_html=True)
@@ -112,13 +117,13 @@ if uploaded_file and prompt and st.button("🚀 Générer les emails"):
 
                 try:
                     prospect_info = "\n".join([f"{col}: {row[col]}" for col in df.columns if pd.notna(row[col])])
-                    full_prompt = prompt.replace("{{PROSPECT_INFO}}", prospect_info)
+                    final_prompt = prompt.replace("{{PROSPECT_INFO}}", prospect_info)
 
                     response = client.messages.create(
-                        model=model_choice,
+                        model=model_choice.strip(),
                         max_tokens=2000,
                         temperature=0.7,
-                        messages=[{"role": "user", "content": full_prompt}]
+                        messages=[{"role": "user", "content": final_prompt}]
                     )
 
                     email_json = json.loads(response.content[0].text.strip())
