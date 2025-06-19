@@ -13,6 +13,7 @@ from datetime import date
 QUOTA_DAILY_REQ = 200
 TEMP_FILE = "generation_temp.csv"
 PROMPT_HISTORY_FILE = "prompt_history.json"
+STATS_FILE = "usage_stats.json"
 
 # STYLES
 st.set_page_config(page_title="Générateur d'emails Silviomotion", layout="wide")
@@ -37,6 +38,8 @@ if 'api_validated' not in st.session_state:
     st.session_state.api_validated = False
 if 'client' not in st.session_state:
     st.session_state.client = None
+if 'preview_data' not in st.session_state:
+    st.session_state.preview_data = None
 
 with col_params:
     st.markdown('<div class="section">1. Entrez votre clé API Anthropic</div>', unsafe_allow_html=True)
@@ -69,6 +72,30 @@ with col_params:
 # Variables pour la reprise de session
 start_idx = 0
 result_df = None
+
+with col_params:
+    st.markdown('<div class="section">📊 Statistiques d\'utilisation</div>', unsafe_allow_html=True)
+    stats = load_stats()
+    
+    col_stat1, col_stat2, col_stat3 = st.columns(3)
+    with col_stat1:
+        st.metric("Total requêtes", stats["total_requests"])
+    with col_stat2:
+        success_rate = (stats["successful_requests"] / max(stats["total_requests"], 1)) * 100
+        st.metric("Taux de succès", f"{success_rate:.1f}%")
+    with col_stat3:
+        today_usage = stats["daily_usage"].get(date.today().isoformat(), {"requests": 0})
+        st.metric("Aujourd'hui", f"{today_usage['requests']}/{QUOTA_DAILY_REQ}")
+    
+    # Graphique des 7 derniers jours
+    if len(stats["daily_usage"]) > 0:
+        last_7_days = sorted(stats["daily_usage"].items())[-7:]
+        if last_7_days:
+            dates = [item[0] for item in last_7_days]
+            requests = [item[1]["requests"] for item in last_7_days]
+            
+            chart_data = pd.DataFrame({"Date": dates, "Requêtes": requests})
+            st.bar_chart(chart_data.set_index("Date"))
 
 with col_params:
     st.markdown('<div class="section">2. Déposez le fichier CSV Sales Navigator</div>', unsafe_allow_html=True)
@@ -145,6 +172,45 @@ def save_prompt_history(name, text):
         st.error(f"Erreur lors de la sauvegarde : {e}")
         return False
 
+def load_stats():
+    """Charge les statistiques d'utilisation"""
+    if os.path.exists(STATS_FILE):
+        try:
+            with open(STATS_FILE, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except json.JSONDecodeError:
+            return {"total_requests": 0, "successful_requests": 0, "failed_requests": 0, "sessions": [], "daily_usage": {}}
+    return {"total_requests": 0, "successful_requests": 0, "failed_requests": 0, "sessions": [], "daily_usage": {}}
+
+def save_stats(stats):
+    """Sauvegarde les statistiques"""
+    try:
+        with open(STATS_FILE, "w", encoding="utf-8") as f:
+            json.dump(stats, f, indent=2, ensure_ascii=False)
+    except Exception as e:
+        st.error(f"Erreur sauvegarde stats : {e}")
+
+def update_stats(success=True, cost_estimate=0):
+    """Met à jour les statistiques"""
+    stats = load_stats()
+    today = date.today().isoformat()
+    
+    stats["total_requests"] += 1
+    if success:
+        stats["successful_requests"] += 1
+    else:
+        stats["failed_requests"] += 1
+    
+    # Statistiques quotidiennes
+    if today not in stats["daily_usage"]:
+        stats["daily_usage"][today] = {"requests": 0, "cost": 0}
+    
+    stats["daily_usage"][today]["requests"] += 1
+    stats["daily_usage"][today]["cost"] += cost_estimate
+    
+    save_stats(stats)
+    return stats
+
 with col_params:
     st.markdown('<div class="section">3. Paramètres du modèle</div>', unsafe_allow_html=True)
     model_choice = st.selectbox("Modèle :", [
@@ -202,6 +268,82 @@ Répondez UNIQUEMENT au format JSON suivant :
                 time.sleep(1)
                 st.rerun()
 
+    # PRÉVISUALISATION EN DIRECT
+    st.markdown('<div class="section">🔍 Prévisualisation</div>', unsafe_allow_html=True)
+    
+    if df is not None and prompt:
+        preview_idx = st.selectbox(
+            "Choisir un prospect pour la prévisualisation :",
+            range(len(df)),
+            format_func=lambda x: f"{df.iloc[x].get('fullName', f\"{df.iloc[x].get('firstName', '')} {df.iloc[x].get('lastName', '')}\")}"
+        )
+        
+        if st.button("👁️ Générer aperçu", help="Génère un email de test pour voir le rendu"):
+            with st.spinner("Génération de l'aperçu..."):
+                try:
+                    row = df.iloc[preview_idx]
+                    content_parts = []
+                    for col in df.columns:
+                        if pd.notna(row[col]) and str(row[col]).strip():
+                            content_parts.append(f"{col}: {row[col]}")
+                    
+                    content = "\n".join(content_parts)
+                    final_prompt = prompt.replace("{{PROSPECT_INFO}}", content)
+                    
+                    # Générer un seul email pour l'aperçu (économie d'API)
+                    preview_prompt = final_prompt.replace(
+                        "Répondez UNIQUEMENT au format JSON suivant :\n[", 
+                        "Répondez UNIQUEMENT au format JSON suivant :\n["
+                    ).replace("Message 4\"}", "Message 1\"}]")
+                    
+                    # Prompt modifié pour un seul email
+                    single_email_prompt = final_prompt.replace(
+                        "générez 4 emails", "générez 1 email"
+                    ).replace(
+                        '[\n  {"subject": "Objet 1", "message": "Message 1"},\n  {"subject": "Objet 2", "message": "Message 2"},\n  {"subject": "Objet 3", "message": "Message 3"},\n  {"subject": "Objet 4", "message": "Message 4"}\n]',
+                        '[{"subject": "Objet", "message": "Message"}]'
+                    )
+                    
+                    response = st.session_state.client.messages.create(
+                        model=model_choice,
+                        max_tokens=max_tokens//2,  # Moins de tokens pour la preview
+                        temperature=temperature,
+                        messages=[{"role": "user", "content": single_email_prompt}]
+                    )
+                    
+                    response_text = response.content[0].text.strip()
+                    if response_text.startswith("```json"):
+                        response_text = response_text.replace("```json", "").replace("```", "").strip()
+                    
+                    preview_email = json.loads(response_text)
+                    if isinstance(preview_email, list) and len(preview_email) > 0:
+                        preview_email = preview_email[0]
+                    
+                    st.session_state.preview_data = {
+                        "prospect": df.iloc[preview_idx].get('fullName', f"{df.iloc[preview_idx].get('firstName', '')} {df.iloc[preview_idx].get('lastName', '')}"),
+                        "email": preview_email
+                    }
+                    
+                    # Mettre à jour les stats
+                    update_stats(success=True, cost_estimate=0.001)
+                    
+                except Exception as e:
+                    st.error(f"❌ Erreur prévisualisation : {e}")
+                    update_stats(success=False)
+        
+        # Affichage de la prévisualisation
+        if st.session_state.preview_data:
+            with st.expander(f"📧 Aperçu pour {st.session_state.preview_data['prospect']}", expanded=True):
+                email_data = st.session_state.preview_data['email']
+                st.markdown(f"**📧 Objet :** {email_data.get('subject', 'N/A')}")
+                st.text_area(
+                    "Message :", 
+                    value=email_data.get('message', 'N/A'), 
+                    height=200,
+                    disabled=True,
+                    key="preview_message"
+                )
+
 # Zone d'affichage des résultats
 placeholder_output = col_output.empty()
 
@@ -212,8 +354,11 @@ with col_params:
             result_df = df.iloc[:start_idx].copy() if start_idx > 0 else pd.DataFrame()
 
         total = len(df)
+        start_time = time.time()
         
         with col_output:
+            # Métriques en temps réel
+            metrics_container = st.container()
             progress_bar = st.progress(start_idx / total if total > 0 else 0)
             status_text = st.empty()
             req_used = start_idx
@@ -227,6 +372,24 @@ with col_params:
                     first_name = str(row.get('firstName', '')).strip()
                     last_name = str(row.get('lastName', '')).strip()
                     full_name = f"{first_name} {last_name}".strip()
+                
+                # Métriques temps réel
+                elapsed_time = time.time() - start_time
+                remaining = total - (idx + 1)
+                avg_time_per_request = elapsed_time / max(idx - start_idx + 1, 1)
+                eta_seconds = remaining * avg_time_per_request
+                eta_minutes = eta_seconds / 60
+                
+                with metrics_container:
+                    col_m1, col_m2, col_m3, col_m4 = st.columns(4)
+                    with col_m1:
+                        st.metric("Traités", f"{idx+1}/{total}")
+                    with col_m2:
+                        st.metric("Succès", f"{req_used - start_idx}")
+                    with col_m3:
+                        st.metric("Temps écoulé", f"{elapsed_time/60:.1f}min")
+                    with col_m4:
+                        st.metric("ETA", f"{eta_minutes:.1f}min" if eta_minutes > 1 else f"{eta_seconds:.0f}s")
                 
                 status_text.text(f"🔄 Traitement de {full_name} ({idx+1}/{total})")
 
@@ -260,6 +423,10 @@ with col_params:
                     # Vérifier que nous avons 4 emails
                     if len(email_json) != 4:
                         raise ValueError("La réponse ne contient pas exactement 4 emails")
+                    
+                    # Estimer le coût (approximatif)
+                    estimated_cost = 0.003 if "sonnet" in model_choice else 0.001
+                    update_stats(success=True, cost_estimate=estimated_cost)
                         
                 except Exception as e:
                     st.error(f"❌ Erreur pour {full_name}: {str(e)}")
@@ -268,6 +435,7 @@ with col_params:
                         {"subject": f"[ERREUR] - {full_name}", "message": f"Erreur lors de la génération: {str(e)}"}
                         for _ in range(4)
                     ]
+                    update_stats(success=False)
 
                 # Ajouter les emails à la ligne
                 new_row = row.to_dict()
@@ -327,7 +495,20 @@ with col_params:
 
             # Finalisation
             status_text.text("✅ Génération terminée !")
-            st.success("🎉 Emails générés avec succès !")
+            
+            # Statistiques finales
+            final_stats = load_stats()
+            total_time = time.time() - start_time
+            with metrics_container:
+                st.success("🎉 Génération terminée !")
+                col_f1, col_f2, col_f3 = st.columns(3)
+                with col_f1:
+                    st.metric("Durée totale", f"{total_time/60:.1f} min")
+                with col_f2:
+                    st.metric("Vitesse moyenne", f"{total_time/(idx-start_idx+1):.1f}s/email")
+                with col_f3:
+                    success_rate = ((req_used - start_idx) / (idx - start_idx + 1)) * 100
+                    st.metric("Taux de succès", f"{success_rate:.1f}%")
             
             # Téléchargement final
             if result_df is not None and len(result_df) > 0:
@@ -358,8 +539,44 @@ if uploaded_file is None:
         4. **Génération** : Lancez la génération automatique
         
         ### 💡 Fonctionnalités :
+        - ✅ **Prévisualisation en direct** - Testez vos prompts avant génération
+        - ✅ **Statistiques d'utilisation** - Suivez vos performances et coûts
         - ✅ Reprise de session en cas d'interruption
         - ✅ Sauvegarde automatique des prompts
         - ✅ Téléchargement progressif des résultats
         - ✅ Gestion automatique du quota API
+        - ✅ **Métriques temps réel** pendant la génération
         """)
+
+# Onglet statistiques avancées dans la sidebar
+with st.sidebar:
+    st.markdown("### 📊 Statistiques détaillées")
+    stats = load_stats()
+    
+    if stats["total_requests"] > 0:
+        st.write(f"**Requêtes totales :** {stats['total_requests']}")
+        st.write(f"**Succès :** {stats['successful_requests']}")
+        st.write(f"**Échecs :** {stats['failed_requests']}")
+        
+        # Coût estimé total
+        total_cost = sum([day_data.get("cost", 0) for day_data in stats["daily_usage"].values()])
+        st.write(f"**Coût estimé :** ${total_cost:.3f}")
+        
+        # Graphique linéaire des derniers jours
+        if len(stats["daily_usage"]) > 1:
+            st.markdown("**Évolution (7 derniers jours) :**")
+            last_days = dict(sorted(stats["daily_usage"].items())[-7:])
+            chart_df = pd.DataFrame([
+                {"Date": date_str, "Requêtes": data["requests"], "Coût": data.get("cost", 0)}
+                for date_str, data in last_days.items()
+            ])
+            st.line_chart(chart_df.set_index("Date"))
+    else:
+        st.info("Aucune statistique disponible")
+    
+    # Bouton de reset des stats
+    if st.button("🗑️ Reset statistiques"):
+        if os.path.exists(STATS_FILE):
+            os.remove(STATS_FILE)
+            st.success("Stats réinitialisées !")
+            st.rerun()
