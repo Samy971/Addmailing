@@ -153,16 +153,16 @@ with col_params:
             status_text.text(f"Traitement de {full_name} ({idx+1}/{total})")
 
             try:
-content = "\\n".join(f"{col}: {row[col]}" for col in df.columns if pd.notna(row[col]))
-                final_prompt = prompt.replace("{{PROSPECT_INFO}}", content)
-                response = client.messages.create(
-                    model=model_choice.strip(), max_tokens=max_tokens,
-                    temperature=temperature,
-                    messages=[{"role": "user", "content": final_prompt}]
-                )
-                email_json = json.loads(response.content[0].text.strip())
-            except Exception as e:
-                email_json = [{"subject": "[ERREUR]", "message": str(e)}] * 4
+    content = "\\n".join(f"{col}: {row[col]}" for col in df.columns if pd.notna(row[col]))
+    final_prompt = prompt.replace("{{PROSPECT_INFO}}", content)
+    response = client.messages.create(
+        model=model_choice.strip(), max_tokens=max_tokens,
+        temperature=temperature,
+        messages=[{"role": "user", "content": final_prompt}]
+    )
+    email_json = json.loads(response.content[0].text.strip())
+except Exception as e:
+    email_json = [{"subject": "[ERREUR]", "message": str(e)}] * 4
 
             new_row = row.to_dict()
             for i in range(4):
