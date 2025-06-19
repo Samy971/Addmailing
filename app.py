@@ -167,7 +167,7 @@ except Exception as e:
             new_row = row.to_dict()
             for i in range(4):
                 new_row[f"email_{i+1}_subject"] = email_json[i]["subject"]
-                new_row[f"email_{i+1}_message"] = email_json[i]["message"].replace("\n", "
+               new_row[f"email_{i+1}_message"] = email_json[i]["message"].replace("\\n", "\n")
 ")
 
             new_df = pd.DataFrame([new_row])
