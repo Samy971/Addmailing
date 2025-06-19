@@ -12,6 +12,7 @@ from datetime import date
 # CONFIG
 QUOTA_DAILY_REQ = 200
 TEMP_FILE = "generation_temp.csv"
+PROMPT_HISTORY_FILE = "prompt_history.json"
 
 # STYLES -------------------------------------------------------------
 st.set_page_config(page_title="Générateur d'emails Silviomotion", layout="wide")
@@ -74,8 +75,41 @@ temperature = st.slider("Température", 0.0, 1.0, 0.7, 0.1)
 max_tokens = st.selectbox("max_tokens", [500, 1000, 1500, 2000, 3000], index=2)
 
 # PROMPT ------------------------------------------------------------
-st.markdown('<div class="section">4. Votre prompt personnalisé</div>', unsafe_allow_html=True)
-prompt = st.text_area("Prompt avec {{PROSPECT_INFO}}", height=300)
+
+def load_prompt_history():
+    if os.path.exists(PROMPT_HISTORY_FILE):
+        with open(PROMPT_HISTORY_FILE, "r", encoding="utf-8") as f:
+            try:
+                return json.load(f)
+            except json.JSONDecodeError:
+                return {}
+    return {}
+
+def save_prompt_history(name, text):
+    history = load_prompt_history()
+    history[name] = text
+    with open(PROMPT_HISTORY_FILE, "w", encoding="utf-8") as f:
+        json.dump(history, f, indent=2, ensure_ascii=False)
+
+st.markdown('<div class="section">📝 4. Prompt personnalisable</div>', unsafe_allow_html=True)
+prompt_history = load_prompt_history()
+prompt_names = list(prompt_history.keys())
+selected_prompt = st.selectbox("📚 Choisir un prompt enregistré :", [""] + prompt_names)
+
+default_prompt = ""
+if selected_prompt and selected_prompt in prompt_history:
+    default_prompt = prompt_history[selected_prompt]
+
+prompt = st.text_area("✍️ Éditez le prompt (utilise {{PROSPECT_INFO}})", value=default_prompt, height=300)
+
+col1, col2 = st.columns([3, 1])
+with col1:
+    new_prompt_name = st.text_input("💾 Nom du nouveau prompt à enregistrer")
+with col2:
+    if st.button("Enregistrer le prompt") and new_prompt_name.strip():
+        save_prompt_history(new_prompt_name.strip(), prompt)
+        st.success(f"✅ Prompt « {new_prompt_name.strip()} » enregistré.")
+        st.experimental_rerun()
 
 # GENERATION --------------------------------------------------------
 if df is not None and prompt and st.button("🚀 Générer les emails"):
@@ -112,7 +146,6 @@ if df is not None and prompt and st.button("🚀 Générer les emails"):
         result_df = pd.concat([result_df, new_df], ignore_index=True)
         result_df.to_csv(TEMP_FILE, sep=";", index=False)
 
-        # Affichage temps réel
         st.markdown("<div class='email-box'>", unsafe_allow_html=True)
         for i in range(4):
             st.markdown(f"<div class='email-subject'>Objet {i+1}: {email_json[i]['subject']}</div>", unsafe_allow_html=True)
