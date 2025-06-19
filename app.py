@@ -41,6 +41,78 @@ if 'client' not in st.session_state:
 if 'preview_data' not in st.session_state:
     st.session_state.preview_data = None
 
+def load_prompt_history():
+    """Charge l'historique des prompts depuis le fichier JSON"""
+    if os.path.exists(PROMPT_HISTORY_FILE):
+        try:
+            with open(PROMPT_HISTORY_FILE, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except json.JSONDecodeError:
+            return {}
+    return {}
+
+def save_prompt_history(name, text):
+    """Sauvegarde un prompt dans l'historique"""
+    history = load_prompt_history()
+    history[name] = text
+    try:
+        with open(PROMPT_HISTORY_FILE, "w", encoding="utf-8") as f:
+            json.dump(history, f, indent=2, ensure_ascii=False)
+        return True
+    except Exception as e:
+        st.error(f"Erreur lors de la sauvegarde : {e}")
+        return False
+
+def load_stats():
+    """Charge les statistiques d'utilisation"""
+    if os.path.exists(STATS_FILE):
+        try:
+            with open(STATS_FILE, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except json.JSONDecodeError:
+            return {"total_requests": 0, "successful_requests": 0, "failed_requests": 0, "sessions": [], "daily_usage": {}}
+    return {"total_requests": 0, "successful_requests": 0, "failed_requests": 0, "sessions": [], "daily_usage": {}}
+
+def save_stats(stats):
+    """Sauvegarde les statistiques"""
+    try:
+        with open(STATS_FILE, "w", encoding="utf-8") as f:
+            json.dump(stats, f, indent=2, ensure_ascii=False)
+    except Exception as e:
+        st.error(f"Erreur sauvegarde stats : {e}")
+
+def update_stats(success=True, cost_estimate=0):
+    """Met à jour les statistiques"""
+    stats = load_stats()
+    today = date.today().isoformat()
+    
+    stats["total_requests"] += 1
+    if success:
+        stats["successful_requests"] += 1
+    else:
+        stats["failed_requests"] += 1
+    
+    # Statistiques quotidiennes
+    if today not in stats["daily_usage"]:
+        stats["daily_usage"][today] = {"requests": 0, "cost": 0}
+    
+    stats["daily_usage"][today]["requests"] += 1
+    stats["daily_usage"][today]["cost"] += cost_estimate
+    
+    save_stats(stats)
+    return stats
+
+def get_display_name(df, index):
+    """Fonction pour obtenir le nom d'affichage d'un prospect"""
+    row = df.iloc[index]
+    full_name = row.get('fullName', '')
+    if full_name and str(full_name).strip():
+        return str(full_name).strip()
+    else:
+        first_name = str(row.get('firstName', '')).strip()
+        last_name = str(row.get('lastName', '')).strip()
+        return f"{first_name} {last_name}".strip() or f"Prospect {index + 1}"
+
 with col_params:
     st.markdown('<div class="section">1. Entrez votre clé API Anthropic</div>', unsafe_allow_html=True)
     show_key = st.checkbox("Afficher la clé API", value=False)
@@ -150,67 +222,6 @@ if uploaded_file:
                     except Exception as e:
                         st.warning(f"Attention : {e}")
 
-def load_prompt_history():
-    """Charge l'historique des prompts depuis le fichier JSON"""
-    if os.path.exists(PROMPT_HISTORY_FILE):
-        try:
-            with open(PROMPT_HISTORY_FILE, "r", encoding="utf-8") as f:
-                return json.load(f)
-        except json.JSONDecodeError:
-            return {}
-    return {}
-
-def save_prompt_history(name, text):
-    """Sauvegarde un prompt dans l'historique"""
-    history = load_prompt_history()
-    history[name] = text
-    try:
-        with open(PROMPT_HISTORY_FILE, "w", encoding="utf-8") as f:
-            json.dump(history, f, indent=2, ensure_ascii=False)
-        return True
-    except Exception as e:
-        st.error(f"Erreur lors de la sauvegarde : {e}")
-        return False
-
-def load_stats():
-    """Charge les statistiques d'utilisation"""
-    if os.path.exists(STATS_FILE):
-        try:
-            with open(STATS_FILE, "r", encoding="utf-8") as f:
-                return json.load(f)
-        except json.JSONDecodeError:
-            return {"total_requests": 0, "successful_requests": 0, "failed_requests": 0, "sessions": [], "daily_usage": {}}
-    return {"total_requests": 0, "successful_requests": 0, "failed_requests": 0, "sessions": [], "daily_usage": {}}
-
-def save_stats(stats):
-    """Sauvegarde les statistiques"""
-    try:
-        with open(STATS_FILE, "w", encoding="utf-8") as f:
-            json.dump(stats, f, indent=2, ensure_ascii=False)
-    except Exception as e:
-        st.error(f"Erreur sauvegarde stats : {e}")
-
-def update_stats(success=True, cost_estimate=0):
-    """Met à jour les statistiques"""
-    stats = load_stats()
-    today = date.today().isoformat()
-    
-    stats["total_requests"] += 1
-    if success:
-        stats["successful_requests"] += 1
-    else:
-        stats["failed_requests"] += 1
-    
-    # Statistiques quotidiennes
-    if today not in stats["daily_usage"]:
-        stats["daily_usage"][today] = {"requests": 0, "cost": 0}
-    
-    stats["daily_usage"][today]["requests"] += 1
-    stats["daily_usage"][today]["cost"] += cost_estimate
-    
-    save_stats(stats)
-    return stats
-
 with col_params:
     st.markdown('<div class="section">3. Paramètres du modèle</div>', unsafe_allow_html=True)
     model_choice = st.selectbox("Modèle :", [
@@ -275,7 +286,7 @@ Répondez UNIQUEMENT au format JSON suivant :
         preview_idx = st.selectbox(
             "Choisir un prospect pour la prévisualisation :",
             range(len(df)),
-            format_func=lambda x: f"{df.iloc[x].get('fullName', f\"{df.iloc[x].get('firstName', '')} {df.iloc[x].get('lastName', '')}\")}"
+            format_func=lambda x: get_display_name(df, x)
         )
         
         if st.button("👁️ Générer aperçu", help="Génère un email de test pour voir le rendu"):
@@ -320,7 +331,7 @@ Répondez UNIQUEMENT au format JSON suivant :
                         preview_email = preview_email[0]
                     
                     st.session_state.preview_data = {
-                        "prospect": df.iloc[preview_idx].get('fullName', f"{df.iloc[preview_idx].get('firstName', '')} {df.iloc[preview_idx].get('lastName', '')}"),
+                        "prospect": get_display_name(df, preview_idx),
                         "email": preview_email
                     }
                     
@@ -367,11 +378,7 @@ with col_params:
                 row = df.iloc[idx]
                 
                 # Construire le nom complet
-                full_name = row.get("fullName", "")
-                if not full_name:
-                    first_name = str(row.get('firstName', '')).strip()
-                    last_name = str(row.get('lastName', '')).strip()
-                    full_name = f"{first_name} {last_name}".strip()
+                full_name = get_display_name(df, idx)
                 
                 # Métriques temps réel
                 elapsed_time = time.time() - start_time
