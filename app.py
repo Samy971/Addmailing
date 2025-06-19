@@ -132,10 +132,6 @@ with col_params:
         status_text = col_output.empty()
         req_used = start_idx
 
-        if os.path.exists(TEMP_FILE):
-            with open(TEMP_FILE, "rb") as f:
-                col_params.download_button("📥 Télécharger ce qui a déjà été généré", data=f.read(), file_name="emails_en_cours.csv", mime="text/csv")
-
         for idx in range(start_idx, total):
             row = df.iloc[idx]
             full_name = row.get("fullName", f"{row.get('firstName', '')} {row.get('lastName', '')}")
@@ -169,6 +165,16 @@ with col_params:
                     st.markdown(f"<div class='email-subject'>Objet {i+1}: {email_json[i]['subject']}</div>", unsafe_allow_html=True)
                     st.markdown(f"<div class='email-message'>{email_json[i]['message'].replace('\\n','<br>')}</div>", unsafe_allow_html=True)
                 st.markdown("</div>", unsafe_allow_html=True)
+
+            # Mise à jour bouton de téléchargement dynamique
+            with open(TEMP_FILE, "rb") as f:
+                col_params.download_button(
+                    "📥 Télécharger les emails en cours",
+                    data=f.read(),
+                    file_name="emails_en_cours.csv",
+                    mime="text/csv",
+                    key=f"dl_{idx}"
+                )
 
             progress_bar.progress((idx + 1) / total)
             req_used += 1
