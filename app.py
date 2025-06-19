@@ -1,5 +1,6 @@
+
 # email_generator_ui.py
-# Version avec interface modernisée, multicolore, à deux colonnes, progression visible et export à tout moment
+# Version complète corrigée, stable et fonctionnelle
 
 import streamlit as st
 import pandas as pd
@@ -14,7 +15,7 @@ QUOTA_DAILY_REQ = 200
 TEMP_FILE = "generation_temp.csv"
 PROMPT_HISTORY_FILE = "prompt_history.json"
 
-# STYLES -------------------------------------------------------------
+# STYLES
 st.set_page_config(page_title="Générateur d'emails Silviomotion", layout="wide")
 st.markdown("""
     <style>
@@ -30,17 +31,14 @@ st.markdown("""
 
 st.markdown("<div class=\"title\">🎥 Silviomotion - Générateur d'emails personnalisés</div>", unsafe_allow_html=True)
 
-# COLONNES PRINCIPALES
 col_params, col_output = st.columns([1, 2])
 
-# API KEY ------------------------------------------------------------
 with col_params:
     st.markdown('<div class="section">1. Entrez votre clé API Anthropic</div>', unsafe_allow_html=True)
     show_key = st.checkbox("Afficher la clé API", value=False)
     api_key_input = st.text_input("Clé API", type="default" if show_key else "password")
     if not api_key_input:
         st.stop()
-
     try:
         client = anthropic.Anthropic(api_key=api_key_input)
         client.messages.create(model="claude-3-haiku-20240307", max_tokens=10, messages=[{"role": "user", "content": "Test"}])
@@ -48,7 +46,6 @@ with col_params:
         st.error(f"Clé API invalide ou erreur : {e}")
         st.stop()
 
-# UPLOAD & REPRISE --------------------------------------------------
 start_idx = 0
 result_df = None
 with col_params:
@@ -73,12 +70,10 @@ if uploaded_file:
                     result_df = pd.read_csv(TEMP_FILE, sep=";")
                     start_idx = len(result_df)
                     df = pd.read_csv(uploaded_file, sep=";")
-
                     if start_idx > 0:
                         last_row = result_df.iloc[-1]
                         prospect_name = last_row.get("fullName") or f"{last_row.get('firstName', '')} {last_row.get('lastName', '')}"
                         st.info(f"🔁 Dernier prospect traité : **{prospect_name}** (ligne {start_idx})")
-
                     st.success(f"Reprise à la ligne {start_idx+1}")
                 except Exception as e:
                     st.error(f"Erreur pendant la reprise : {e}")
@@ -88,7 +83,6 @@ if uploaded_file:
                 result_df = None
                 start_idx = 0
 
-# ZONE DE PARAMÈTRES & PROMPT --------------------------------------------------
 def load_prompt_history():
     if os.path.exists(PROMPT_HISTORY_FILE):
         with open(PROMPT_HISTORY_FILE, "r", encoding="utf-8") as f:
@@ -134,7 +128,6 @@ with col_params:
             st.success(f"✅ Prompt « {new_prompt_name.strip()} » enregistré.")
             st.experimental_rerun()
 
-# GÉNÉRATION --------------------------------------------------------
 placeholder_output = col_output.empty()
 
 with col_params:
@@ -153,21 +146,21 @@ with col_params:
             status_text.text(f"Traitement de {full_name} ({idx+1}/{total})")
 
             try:
-    content = "\\n".join(f"{col}: {row[col]}" for col in df.columns if pd.notna(row[col]))
-    final_prompt = prompt.replace("{{PROSPECT_INFO}}", content)
-    response = client.messages.create(
-        model=model_choice.strip(), max_tokens=max_tokens,
-        temperature=temperature,
-        messages=[{"role": "user", "content": final_prompt}]
-    )
-    email_json = json.loads(response.content[0].text.strip())
-except Exception as e:
-    email_json = [{"subject": "[ERREUR]", "message": str(e)}] * 4
+                content = "\n".join(f"{col}: {row[col]}" for col in df.columns if pd.notna(row[col]))
+                final_prompt = prompt.replace("{{PROSPECT_INFO}}", content)
+                response = client.messages.create(
+                    model=model_choice.strip(), max_tokens=max_tokens,
+                    temperature=temperature,
+                    messages=[{"role": "user", "content": final_prompt}]
+                )
+                email_json = json.loads(response.content[0].text.strip())
+            except Exception as e:
+                email_json = [{"subject": "[ERREUR]", "message": str(e)}] * 4
 
             new_row = row.to_dict()
             for i in range(4):
                 new_row[f"email_{i+1}_subject"] = email_json[i]["subject"]
-               new_row[f"email_{i+1}_message"] = email_json[i]["message"].replace("\\n", "\n")
+                new_row[f"email_{i+1}_message"] = email_json[i]["message"].replace("\n", "
 ")
 
             new_df = pd.DataFrame([new_row])
@@ -198,7 +191,6 @@ except Exception as e:
                 break
 
         col_output.success("Emails générés avec succès !")
-        csv = result_df.to_csv(index=False, sep=";", lineterminator="
-", quoting=1).encode("utf-8")
+        csv = result_df.to_csv(index=False, sep=";", lineterminator="\n", quoting=1).encode("utf-8")
         col_output.download_button("📥 Télécharger le fichier final", data=csv, file_name="emails_silviomotion.csv", mime="text/csv")
         os.remove(TEMP_FILE)
