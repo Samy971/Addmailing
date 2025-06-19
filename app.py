@@ -40,7 +40,6 @@ if not api_key_input:
     st.warning("💡 Veuillez entrer votre clé API pour continuer.")
     st.stop()
 
-# Vérification de la clé API avec modèle actif
 try:
     test_client = anthropic.Anthropic(api_key=api_key_input)
     test_client.messages.create(
@@ -57,13 +56,26 @@ except Exception as e:
 st.markdown('<div class="section-title">📤 1. Dépose ton fichier CSV Sales Navigator</div>', unsafe_allow_html=True)
 uploaded_file = st.file_uploader("Fichier CSV (séparateur `;`)", type="csv")
 
-# ---------- 2. MODÈLE À JOUR ----------
-st.markdown('<div class="section-title">🧠 2. Choisis le modèle Claude</div>', unsafe_allow_html=True)
-model_choice = st.selectbox("Modèle", [
+# ---------- 2. MODÈLE + PARAMÈTRES ----------
+st.markdown('<div class="section-title">🧠 2. Choisis le modèle et les paramètres</div>', unsafe_allow_html=True)
+model_choice = st.selectbox("Modèle Claude :", [
     "claude-3-sonnet-20240601",
     "claude-3-opus-20240601",
     "claude-3-haiku-20240307"
 ])
+
+temperature = st.slider(
+    "🎛️ Température (créativité)",
+    min_value=0.0, max_value=1.0, value=0.7, step=0.1,
+    help="0.0 = rigide, 1.0 = créatif"
+)
+
+max_tokens = st.selectbox(
+    "🧮 max_tokens (taille max de réponse)",
+    options=[500, 1000, 1500, 2000, 3000],
+    index=2,
+    help="Nombre maximum de tokens (≈ 0.75 mot/token)"
+)
 
 # ---------- 3. PROMPT ----------
 st.markdown('<div class="section-title">✍️ 3. Rédige ou recharge ton prompt</div>', unsafe_allow_html=True)
@@ -121,8 +133,8 @@ if uploaded_file and prompt and st.button("🚀 Générer les emails"):
 
                     response = client.messages.create(
                         model=model_choice.strip(),
-                        max_tokens=2000,
-                        temperature=0.7,
+                        max_tokens=max_tokens,
+                        temperature=temperature,
                         messages=[{"role": "user", "content": final_prompt}]
                     )
 
