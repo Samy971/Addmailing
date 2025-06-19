@@ -59,8 +59,8 @@ uploaded_file = st.file_uploader("Fichier CSV (séparateur `;`)", type="csv")
 # ---------- 2. MODÈLE + PARAMÈTRES ----------
 st.markdown('<div class="section-title">🧠 2. Choisis le modèle et les paramètres</div>', unsafe_allow_html=True)
 model_choice = st.selectbox("Modèle Claude :", [
-    "claude-3-sonnet-20240229",
-    "claude-3-opus-20240229",
+    "claude-3-5-sonnet-20240620",
+    "claude-3-5-sonnet-20241022",
     "claude-3-haiku-20240307"
 ])
 
