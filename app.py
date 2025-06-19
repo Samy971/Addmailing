@@ -153,8 +153,7 @@ with col_params:
             status_text.text(f"Traitement de {full_name} ({idx+1}/{total})")
 
             try:
-                content = "
-".join(f"{col}: {row[col]}" for col in df.columns if pd.notna(row[col]))
+content = "\\n".join(f"{col}: {row[col]}" for col in df.columns if pd.notna(row[col]))
                 final_prompt = prompt.replace("{{PROSPECT_INFO}}", content)
                 response = client.messages.create(
                     model=model_choice.strip(), max_tokens=max_tokens,
