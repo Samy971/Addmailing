@@ -59,8 +59,8 @@ uploaded_file = st.file_uploader("Fichier CSV (séparateur `;`)", type="csv")
 # ---------- 2. MODÈLE + PARAMÈTRES ----------
 st.markdown('<div class="section-title">🧠 2. Choisis le modèle et les paramètres</div>', unsafe_allow_html=True)
 model_choice = st.selectbox("Modèle Claude :", [
-    "claude-3-sonnet-20240601",
-    "claude-3-opus-20240601",
+    "claude-3-sonnet-20240229",
+    "claude-3-opus-20240229",
     "claude-3-haiku-20240307"
 ])
 
@@ -107,7 +107,7 @@ with col2:
         save_prompt_history(new_prompt_name.strip(), prompt)
         st.success(f"✅ Prompt « {new_prompt_name} » sauvegardé.")
 
-# ---------- 4. GENERATE ----------
+# ---------- 4. GÉNÉRATION ----------
 if uploaded_file and prompt and st.button("🚀 Générer les emails"):
 
     try:
