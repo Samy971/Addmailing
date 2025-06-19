@@ -1,161 +1,131 @@
+# email_generator_ui.py (anciennement app.py)
+# Version avec interface modernisée, multicolore, résumé en temps réel, quota et reprise automatique
+
 import streamlit as st
 import pandas as pd
 import anthropic
 import json
 import os
+import time
+from datetime import date
 
-# ---------- STYLES ----------
-st.set_page_config(page_title="Générateur d'emails Silviomotion", layout="centered")
+# CONFIG
+QUOTA_DAILY_REQ = 200
+TEMP_FILE = "generation_temp.csv"
+
+# STYLES -------------------------------------------------------------
+st.set_page_config(page_title="Générateur d'emails Silviomotion", layout="wide")
 st.markdown("""
     <style>
-    .big-title {
-        font-size: 36px;
-        font-weight: bold;
-        color: #4CAF50;
-        margin-bottom: 20px;
-    }
-    .section-title {
-        font-size: 22px;
-        color: #333;
-        margin-top: 30px;
-        margin-bottom: 10px;
-    }
-    .small-note {
-        font-size: 13px;
-        color: #888;
-    }
+    body {background-color: #f7f9fc;}
+    .title {font-size: 40px; font-weight: bold; color: #2e7d32;}
+    .section {font-size: 22px; color: #1b1b1b; margin-top: 30px;}
+    .sub {color: #888; font-size: 14px; margin-bottom: 10px;}
+    .email-box {background-color: #fff; border-radius: 10px; padding: 15px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin-bottom: 10px;}
+    .email-subject {font-weight: bold; color: #1565c0;}
+    .email-message {white-space: pre-line; color: #333;}
     </style>
 """, unsafe_allow_html=True)
 
-# ---------- HEADER ----------
-st.markdown('<div class="big-title">🎥 Générateur d’emails Silviomotion</div>', unsafe_allow_html=True)
-st.markdown('<p class="small-note">Créez une séquence de 4 emails personnalisés à partir d’un fichier Sales Navigator</p>', unsafe_allow_html=True)
+st.markdown('<div class="title">🎥 Silviomotion - Générateur d'emails personnalisés</div>', unsafe_allow_html=True)
 
-# ---------- 0. CLÉ API ----------
-st.markdown('<div class="section-title">🔐 0. Entrez votre clé API Anthropic</div>', unsafe_allow_html=True)
+# API KEY ------------------------------------------------------------
+st.markdown('<div class="section">1. Entrez votre clé API Anthropic</div>', unsafe_allow_html=True)
 show_key = st.checkbox("Afficher la clé API", value=False)
 api_key_input = st.text_input("Clé API", type="default" if show_key else "password")
-
 if not api_key_input:
-    st.warning("💡 Veuillez entrer votre clé API pour continuer.")
     st.stop()
 
 try:
-    test_client = anthropic.Anthropic(api_key=api_key_input)
-    test_client.messages.create(
-        model="claude-3-haiku-20240307",
-        max_tokens=10,
-        messages=[{"role": "user", "content": "Ping"}]
-    )
-    client = test_client
+    client = anthropic.Anthropic(api_key=api_key_input)
+    client.messages.create(model="claude-3-haiku-20240307", max_tokens=10, messages=[{"role": "user", "content": "Test"}])
 except Exception as e:
-    st.error(f"❌ Clé API invalide ou refusée : {e}")
+    st.error(f"Clé API invalide ou erreur : {e}")
     st.stop()
 
-# ---------- 1. FICHIER ----------
-st.markdown('<div class="section-title">📤 1. Dépose ton fichier CSV Sales Navigator</div>', unsafe_allow_html=True)
-uploaded_file = st.file_uploader("Fichier CSV (séparateur `;`)", type="csv")
+# UPLOAD & REPRISE --------------------------------------------------
+st.markdown('<div class="section">2. Déposez le fichier CSV Sales Navigator</div>', unsafe_allow_html=True)
+start_idx = 0
+result_df = None
+uploaded_file = st.file_uploader("Fichier CSV", type="csv")
 
-# ---------- 2. MODÈLE + PARAMÈTRES ----------
-st.markdown('<div class="section-title">🧠 2. Choisis le modèle et les paramètres</div>', unsafe_allow_html=True)
-model_choice = st.selectbox("Modèle Claude :", [
+df = None
+if uploaded_file:
+    df = pd.read_csv(uploaded_file, sep=";")
+    if os.path.exists(TEMP_FILE):
+        if st.button("🔁 Reprendre depuis dernière session"):
+            result_df = pd.read_csv(TEMP_FILE, sep=";")
+            start_idx = len(result_df)
+            df = pd.read_csv(uploaded_file, sep=";")
+            st.success(f"Reprise à la ligne {start_idx+1}")
+        elif st.button("❌ Supprimer sauvegarde et recommencer"):
+            os.remove(TEMP_FILE)
+            result_df = None
+            start_idx = 0
+
+# PARAMETRES --------------------------------------------------------
+st.markdown('<div class="section">3. Paramètres du modèle</div>', unsafe_allow_html=True)
+model_choice = st.selectbox("Modèle :", [
     "claude-3-5-sonnet-20240620",
     "claude-3-5-sonnet-20241022",
     "claude-3-haiku-20240307"
 ])
+temperature = st.slider("Température", 0.0, 1.0, 0.7, 0.1)
+max_tokens = st.selectbox("max_tokens", [500, 1000, 1500, 2000, 3000], index=2)
 
-temperature = st.slider(
-    "🎛️ Température (créativité)",
-    min_value=0.0, max_value=1.0, value=0.7, step=0.1,
-    help="0.0 = rigide, 1.0 = créatif"
-)
+# PROMPT ------------------------------------------------------------
+st.markdown('<div class="section">4. Votre prompt personnalisé</div>', unsafe_allow_html=True)
+prompt = st.text_area("Prompt avec {{PROSPECT_INFO}}", height=300)
 
-max_tokens = st.selectbox(
-    "🧮 max_tokens (taille max de réponse)",
-    options=[500, 1000, 1500, 2000, 3000],
-    index=2,
-    help="Nombre maximum de tokens (≈ 0.75 mot/token)"
-)
+# GENERATION --------------------------------------------------------
+if df is not None and prompt and st.button("🚀 Générer les emails"):
+    if result_df is None:
+        result_df = df.iloc[:start_idx].copy()
 
-# ---------- 3. PROMPT ----------
-st.markdown('<div class="section-title">✍️ 3. Rédige ou recharge ton prompt</div>', unsafe_allow_html=True)
-PROMPT_HISTORY_FILE = "prompt_history.json"
+    total = len(df)
+    progress_bar = st.progress(start_idx / total)
+    status_text = st.empty()
+    req_used = start_idx
 
-def load_prompt_history():
-    if os.path.exists(PROMPT_HISTORY_FILE):
-        with open(PROMPT_HISTORY_FILE, "r") as f:
-            return json.load(f)
-    return {}
+    for idx in range(start_idx, total):
+        row = df.iloc[idx]
+        full_name = row.get("fullName", f"{row.get('firstName', '')} {row.get('lastName', '')}")
+        status_text.text(f"Traitement de {full_name} ({idx+1}/{total})")
+        try:
+            content = "\n".join(f"{col}: {row[col]}" for col in df.columns if pd.notna(row[col]))
+            final_prompt = prompt.replace("{{PROSPECT_INFO}}", content)
+            response = client.messages.create(
+                model=model_choice.strip(), max_tokens=max_tokens,
+                temperature=temperature,
+                messages=[{"role": "user", "content": final_prompt}]
+            )
+            email_json = json.loads(response.content[0].text.strip())
+        except Exception as e:
+            email_json = [{"subject": "[ERREUR]", "message": str(e)}] * 4
 
-def save_prompt_history(name, text):
-    history = load_prompt_history()
-    history[name] = text
-    with open(PROMPT_HISTORY_FILE, "w") as f:
-        json.dump(history, f, indent=2)
+        new_row = row.to_dict()
+        for i in range(4):
+            new_row[f"email_{i+1}_subject"] = email_json[i]["subject"]
+            new_row[f"email_{i+1}_message"] = email_json[i]["message"].replace("\\n", "\n")
 
-history = load_prompt_history()
-selected_prompt = st.selectbox("📜 Charger un prompt existant :", [""] + list(history.keys()))
-default_prompt = history[selected_prompt] if selected_prompt else ""
+        new_df = pd.DataFrame([new_row])
+        result_df = pd.concat([result_df, new_df], ignore_index=True)
+        result_df.to_csv(TEMP_FILE, sep=";", index=False)
 
-prompt = st.text_area("Prompt personnalisé (utilise {{PROSPECT_INFO}})", value=default_prompt, height=500)
+        # Affichage temps réel
+        st.markdown("<div class='email-box'>", unsafe_allow_html=True)
+        for i in range(4):
+            st.markdown(f"<div class='email-subject'>Objet {i+1}: {email_json[i]['subject']}</div>", unsafe_allow_html=True)
+            st.markdown(f"<div class='email-message'>{email_json[i]['message'].replace('\\n','<br>')}</div>", unsafe_allow_html=True)
+        st.markdown("</div>", unsafe_allow_html=True)
 
-col1, col2 = st.columns([3, 1])
-with col1:
-    new_prompt_name = st.text_input("💾 Nom du prompt à sauvegarder")
-with col2:
-    if st.button("Sauvegarder le prompt") and new_prompt_name.strip():
-        save_prompt_history(new_prompt_name.strip(), prompt)
-        st.success(f"✅ Prompt « {new_prompt_name} » sauvegardé.")
+        progress_bar.progress((idx + 1) / total)
+        req_used += 1
+        if req_used >= QUOTA_DAILY_REQ:
+            st.warning("Quota de requêtes atteint. Arrêt automatique.")
+            break
 
-# ---------- 4. GÉNÉRATION ----------
-if uploaded_file and prompt and st.button("🚀 Générer les emails"):
-
-    try:
-        df = pd.read_csv(uploaded_file, sep=";")
-        result_df = df.copy()
-
-        for i in range(1, 5):
-            result_df[f"email_{i}_subject"] = ""
-            result_df[f"email_{i}_message"] = ""
-
-        with st.spinner("🔄 Génération en cours..."):
-            progress_bar = st.progress(0)
-            total = len(df)
-            status_text = st.empty()
-
-            for idx, row in df.iterrows():
-                full_name = row["fullName"] if "fullName" in row else f"{row.get('firstName', '')} {row.get('lastName', '')}"
-                status_text.text(f"👤 Traitement du prospect {idx + 1}/{total} : {full_name}")
-
-                try:
-                    prospect_info = "\n".join([f"{col}: {row[col]}" for col in df.columns if pd.notna(row[col])])
-                    final_prompt = prompt.replace("{{PROSPECT_INFO}}", prospect_info)
-
-                    response = client.messages.create(
-                        model=model_choice.strip(),
-                        max_tokens=max_tokens,
-                        temperature=temperature,
-                        messages=[{"role": "user", "content": final_prompt}]
-                    )
-
-                    email_json = json.loads(response.content[0].text.strip())
-
-                    for i in range(4):
-                        result_df.at[idx, f"email_{i+1}_subject"] = email_json[i]["subject"]
-                        result_df.at[idx, f"email_{i+1}_message"] = email_json[i]["message"].replace("\\n", "\n")
-
-                except Exception as e:
-                    for i in range(4):
-                        result_df.at[idx, f"email_{i+1}_subject"] = "[ERREUR]"
-                        result_df.at[idx, f"email_{i+1}_message"] = str(e)
-
-                progress_bar.progress((idx + 1) / total)
-
-        st.success("✅ Emails générés avec succès !")
-        st.dataframe(result_df[[f"email_{i}_subject" for i in range(1, 5)] + [f"email_{i}_message" for i in range(1, 5)]])
-
-        csv = result_df.to_csv(index=False, sep=";", lineterminator="\n", quoting=1).encode("utf-8")
-        st.download_button("📥 Télécharger le fichier final", data=csv, file_name="emails_silviomotion.csv", mime="text/csv")
-
-    except Exception as e:
-        st.error(f"❌ Erreur pendant la génération : {str(e)}")
+    st.success("Emails générés avec succès !")
+    csv = result_df.to_csv(index=False, sep=";", lineterminator="\n", quoting=1).encode("utf-8")
+    st.download_button("📥 Télécharger", data=csv, file_name="emails_silviomotion.csv", mime="text/csv")
+    os.remove(TEMP_FILE)
