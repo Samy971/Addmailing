@@ -360,111 +360,85 @@ placeholder_output = col_output.empty()
 
 # Génération des emails
 with col_params:
-    if df is not None and prompt and st.button("🚀 Générer les emails", type="primary"):
+# Partie refactorisée : boucle de génération des emails optimisée et stable
+# À intégrer à la place de ta boucle actuelle dans la section « Génération des emails »
+
+if 'generating' not in st.session_state:
+    st.session_state.generating = False
+
+if df is not None and prompt and st.button("🚀 Générer les emails", type="primary") and not st.session_state.generating:
+    st.session_state.generating = True
+    try:
         if result_df is None:
             result_df = df.iloc[:start_idx].copy() if start_idx > 0 else pd.DataFrame()
 
         total = len(df)
         start_time = time.time()
-        
+
         with col_output:
-            # Métriques en temps réel
-            metrics_container = st.container()
             progress_bar = st.progress(start_idx / total if total > 0 else 0)
             status_text = st.empty()
+            display_area = st.empty()
             req_used = start_idx
 
             for idx in range(start_idx, total):
                 row = df.iloc[idx]
-                
-                # Construire le nom complet
                 full_name = get_display_name(df, idx)
-                
-                # Métriques temps réel
-                elapsed_time = time.time() - start_time
-                remaining = total - (idx + 1)
-                avg_time_per_request = elapsed_time / max(idx - start_idx + 1, 1)
-                eta_seconds = remaining * avg_time_per_request
-                eta_minutes = eta_seconds / 60
-                
-                with metrics_container:
-                    col_m1, col_m2, col_m3, col_m4 = st.columns(4)
-                    with col_m1:
-                        st.metric("Traités", f"{idx+1}/{total}")
-                    with col_m2:
-                        st.metric("Succès", f"{req_used - start_idx}")
-                    with col_m3:
-                        st.metric("Temps écoulé", f"{elapsed_time/60:.1f}min")
-                    with col_m4:
-                        st.metric("ETA", f"{eta_minutes:.1f}min" if eta_minutes > 1 else f"{eta_seconds:.0f}s")
-                
+
                 status_text.text(f"🔄 Traitement de {full_name} ({idx+1}/{total})")
 
                 try:
-                    # Préparer les informations du prospect
-                    content_parts = []
-                    for col in df.columns:
-                        if pd.notna(row[col]) and str(row[col]).strip():
-                            content_parts.append(f"{col}: {row[col]}")
-                    
+                    content_parts = [f"{col}: {row[col]}" for col in df.columns if pd.notna(row[col]) and str(row[col]).strip()]
                     content = "\n".join(content_parts)
                     final_prompt = prompt.replace("{{PROSPECT_INFO}}", content)
-                    
-                    # Appel à l'API Anthropic
+
                     response = st.session_state.client.messages.create(
                         model=model_choice,
                         max_tokens=max_tokens,
                         temperature=temperature,
                         messages=[{"role": "user", "content": final_prompt}]
                     )
-                    
-                    # Parser la réponse JSON
-                    response_text = response.content[0].text.strip()
-                    
-                    # Nettoyer la réponse si elle contient des markdown
+
+                    response_text = response.content[0].text.strip() if response.content else ""
+
                     if response_text.startswith("```json"):
                         response_text = response_text.replace("```json", "").replace("```", "").strip()
-                    
+
                     email_json = json.loads(response_text)
-                    
-                    # Vérifier que nous avons 4 emails
-                    if len(email_json) != 4:
+
+                    if not isinstance(email_json, list) or len(email_json) != 4:
                         raise ValueError("La réponse ne contient pas exactement 4 emails")
-                    
-                    # Estimer le coût (approximatif)
+
                     estimated_cost = 0.003 if "sonnet" in model_choice else 0.001
                     update_stats(success=True, cost_estimate=estimated_cost)
-                        
+
                 except Exception as e:
-                    st.error(f"❌ Erreur pour {full_name}: {str(e)}")
-                    # Générer des emails d'erreur
+                    st.warning(f"Erreur pour {full_name} : {e}")
                     email_json = [
-                        {"subject": f"[ERREUR] - {full_name}", "message": f"Erreur lors de la génération: {str(e)}"}
+                        {"subject": f"[ERREUR] - {full_name}", "message": f"Erreur : {e}"}
                         for _ in range(4)
                     ]
                     update_stats(success=False)
 
-                # Ajouter les emails à la ligne
+                # Ajout au DataFrame résultat
                 new_row = row.to_dict()
                 for i in range(4):
                     new_row[f"email_{i+1}_subject"] = email_json[i]["subject"]
                     new_row[f"email_{i+1}_message"] = email_json[i]["message"].replace("\\n", "\n")
 
-                # Ajouter au DataFrame résultat
                 new_df = pd.DataFrame([new_row])
                 result_df = pd.concat([result_df, new_df], ignore_index=True)
-                
-                # Sauvegarder temporairement
+
                 try:
                     result_df.to_csv(TEMP_FILE, sep=";", index=False)
                 except Exception as e:
-                    st.warning(f"⚠️ Erreur de sauvegarde temporaire : {e}")
+                    st.warning(f"Erreur de sauvegarde temporaire : {e}")
 
-                # Afficher les emails générés
-                with placeholder_output.container():
+                # Affichage unique dans zone réservée
+                with display_area.container():
                     st.markdown(f"### 📧 Emails pour {full_name}")
                     for i in range(4):
-                        with st.expander(f"Email {i+1}: {email_json[i]['subject']}", expanded=i==0):
+                        with st.expander(f"Email {i+1}: {email_json[i]['subject']}", expanded=(i == 0)):
                             st.markdown(f"**Objet:** {email_json[i]['subject']}")
                             st.text_area(
                                 "Message:", 
@@ -474,17 +448,48 @@ with col_params:
                                 disabled=True
                             )
 
-                # Bouton de téléchargement intermédiaire
-                if os.path.exists(TEMP_FILE):
+                if idx % 10 == 9:
                     try:
                         with open(TEMP_FILE, "rb") as f:
                             st.download_button(
-                                "📥 Télécharger progression actuelle",
+                                "📅 Télécharger progression intermédiaire",
                                 data=f.read(),
                                 file_name=f"emails_progress_{idx+1}.csv",
                                 mime="text/csv",
                                 key=f"dl_{idx}"
                             )
+                    except Exception as e:
+                        st.warning(f"Erreur bouton téléchargement : {e}")
+
+                progress_bar.progress((idx + 1) / total)
+                req_used += 1
+
+                if req_used >= QUOTA_DAILY_REQ:
+                    st.warning(f"Quota atteint ({QUOTA_DAILY_REQ}), arrêt automatique.")
+                    break
+
+                time.sleep(0.2)
+
+        status_text.text("Génération terminée.")
+
+        if result_df is not None and len(result_df) > 0:
+            csv = result_df.to_csv(index=False, sep=";").encode("utf-8")
+            st.download_button(
+                "📅 Télécharger le fichier final",
+                data=csv,
+                file_name=f"emails_silviomotion_{date.today().strftime('%Y%m%d')}.csv",
+                mime="text/csv"
+            )
+
+            try:
+                if os.path.exists(TEMP_FILE):
+                    os.remove(TEMP_FILE)
+            except Exception as e:
+                st.warning(f"Erreur suppression fichier temporaire : {e}")
+
+    finally:
+        st.session_state.generating = False
+
                     except Exception as e:
                         st.warning(f"⚠️ Erreur téléchargement : {e}")
 
