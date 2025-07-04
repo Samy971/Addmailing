@@ -1219,4 +1219,3 @@ with st.sidebar:
             os.remove(STATS_FILE)
             st.success("✅ Analytics réinitialisées !")
             st.rerun()
-            
