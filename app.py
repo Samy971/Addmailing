@@ -1,5 +1,5 @@
 # email_generator_ui.py
-# Version complète corrigée, stable et fonctionnelle
+# Version complète avec thème noir et orange - Fonctionnalité inchangée
 
 import streamlit as st
 import pandas as pd
@@ -15,17 +15,238 @@ TEMP_FILE = "generation_temp.csv"
 PROMPT_HISTORY_FILE = "prompt_history.json"
 STATS_FILE = "usage_stats.json"
 
-# STYLES
+# STYLES - THÈME NOIR ET ORANGE
 st.set_page_config(page_title="Générateur d'emails Silviomotion", layout="wide")
 st.markdown("""
     <style>
-    body {background-color: #f7f9fc;}
-    .title {font-size: 40px; font-weight: bold; color: #2e7d32;}
-    .section {font-size: 22px; color: #1b1b1b; margin-top: 30px;}
-    .sub {color: #888; font-size: 14px; margin-bottom: 10px;}
-    .email-box {background-color: #fff; border-radius: 10px; padding: 15px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin-bottom: 10px;}
-    .email-subject {font-weight: bold; color: #1565c0;}
-    .email-message {white-space: pre-line; color: #333;}
+    /* Configuration globale */
+    .main {
+        background-color: #0e0e0e;
+        color: #ffffff;
+    }
+    
+    /* Titre principal */
+    .title {
+        font-size: 42px; 
+        font-weight: bold; 
+        color: #ff6b35;
+        text-align: center;
+        margin-bottom: 30px;
+        text-shadow: 2px 2px 4px rgba(255, 107, 53, 0.3);
+    }
+    
+    /* Sections */
+    .section {
+        font-size: 24px; 
+        color: #ff8c42; 
+        margin-top: 30px;
+        margin-bottom: 15px;
+        font-weight: 600;
+        border-bottom: 2px solid #ff6b35;
+        padding-bottom: 5px;
+    }
+    
+    /* Texte secondaire */
+    .sub {
+        color: #cccccc; 
+        font-size: 14px; 
+        margin-bottom: 10px;
+    }
+    
+    /* Boîtes d'email */
+    .email-box {
+        background: linear-gradient(145deg, #1a1a1a, #2d2d2d);
+        border: 1px solid #ff6b35;
+        border-radius: 12px; 
+        padding: 20px; 
+        box-shadow: 0 4px 12px rgba(255, 107, 53, 0.2);
+        margin-bottom: 15px;
+    }
+    
+    .email-subject {
+        font-weight: bold; 
+        color: #ff8c42;
+        font-size: 16px;
+        margin-bottom: 10px;
+    }
+    
+    .email-message {
+        white-space: pre-line; 
+        color: #e0e0e0;
+        background-color: #262626;
+        padding: 12px;
+        border-radius: 8px;
+        border-left: 4px solid #ff6b35;
+    }
+    
+    /* Personnalisation des éléments Streamlit */
+    .stSelectbox > div > div {
+        background-color: #2d2d2d;
+        color: #ffffff;
+        border: 1px solid #ff6b35;
+    }
+    
+    .stTextInput > div > div > input {
+        background-color: #2d2d2d;
+        color: #ffffff;
+        border: 1px solid #ff6b35;
+    }
+    
+    .stTextArea > div > div > textarea {
+        background-color: #2d2d2d;
+        color: #ffffff;
+        border: 1px solid #ff6b35;
+    }
+    
+    .stButton > button {
+        background: linear-gradient(145deg, #ff6b35, #ff8c42);
+        color: #ffffff;
+        border: none;
+        border-radius: 8px;
+        font-weight: 600;
+        transition: all 0.3s ease;
+    }
+    
+    .stButton > button:hover {
+        background: linear-gradient(145deg, #ff8c42, #ff6b35);
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(255, 107, 53, 0.4);
+    }
+    
+    /* Bouton principal */
+    .stButton > button[kind="primary"] {
+        background: linear-gradient(145deg, #ff4500, #ff6b35);
+        font-size: 16px;
+        padding: 12px 24px;
+        box-shadow: 0 6px 20px rgba(255, 107, 53, 0.4);
+    }
+    
+    /* Métriques */
+    .metric-card {
+        background: linear-gradient(145deg, #1a1a1a, #2d2d2d);
+        border: 1px solid #ff6b35;
+        border-radius: 10px;
+        padding: 15px;
+        text-align: center;
+        box-shadow: 0 2px 8px rgba(255, 107, 53, 0.2);
+    }
+    
+    /* Messages d'état */
+    .stSuccess {
+        background-color: #2d4a2d;
+        color: #90ee90;
+        border: 1px solid #4caf50;
+    }
+    
+    .stError {
+        background-color: #4d2d2d;
+        color: #ffcccb;
+        border: 1px solid #f44336;
+    }
+    
+    .stWarning {
+        background-color: #4d3d2d;
+        color: #ffd700;
+        border: 1px solid #ff9800;
+    }
+    
+    .stInfo {
+        background-color: #2d3d4d;
+        color: #87ceeb;
+        border: 1px solid #2196f3;
+    }
+    
+    /* Graphiques */
+    .stPlotlyChart {
+        background-color: #1a1a1a;
+    }
+    
+    /* Expander */
+    .streamlit-expanderHeader {
+        background-color: #2d2d2d;
+        color: #ff8c42;
+        border: 1px solid #ff6b35;
+    }
+    
+    .streamlit-expanderContent {
+        background-color: #1a1a1a;
+        border: 1px solid #ff6b35;
+    }
+    
+    /* Barre de progression */
+    .stProgress > div > div > div > div {
+        background: linear-gradient(90deg, #ff6b35, #ff8c42);
+    }
+    
+    /* Sidebar */
+    .css-1d391kg {
+        background-color: #1a1a1a;
+        border-right: 2px solid #ff6b35;
+    }
+    
+    /* Checkbox */
+    .stCheckbox > label {
+        color: #ffffff;
+    }
+    
+    /* Slider */
+    .stSlider > div > div > div {
+        background-color: #ff6b35;
+    }
+    
+    /* Upload */
+    .stFileUploader > div {
+        background-color: #2d2d2d;
+        border: 2px dashed #ff6b35;
+        border-radius: 8px;
+    }
+    
+    /* Tabs */
+    .stTabs [data-baseweb="tab-list"] {
+        background-color: #2d2d2d;
+    }
+    
+    .stTabs [data-baseweb="tab"] {
+        color: #ff8c42;
+    }
+    
+    .stTabs [aria-selected="true"] {
+        background-color: #ff6b35;
+        color: #ffffff;
+    }
+    
+    /* Colonnes */
+    .css-1r6slb0 {
+        background-color: #0e0e0e;
+    }
+    
+    /* Amélioration de la lisibilité */
+    .stMarkdown {
+        color: #e0e0e0;
+    }
+    
+    h1, h2, h3, h4, h5, h6 {
+        color: #ff8c42;
+    }
+    
+    /* Style pour les codes */
+    code {
+        background-color: #2d2d2d;
+        color: #ff8c42;
+        padding: 2px 4px;
+        border-radius: 4px;
+    }
+    
+    /* Animation pour les boutons */
+    @keyframes pulse {
+        0% { box-shadow: 0 0 0 0 rgba(255, 107, 53, 0.7); }
+        70% { box-shadow: 0 0 0 10px rgba(255, 107, 53, 0); }
+        100% { box-shadow: 0 0 0 0 rgba(255, 107, 53, 0); }
+    }
+    
+    .pulse-animation {
+        animation: pulse 2s infinite;
+    }
     </style>
 """, unsafe_allow_html=True)
 
@@ -116,7 +337,7 @@ def get_display_name(df, index):
         return f"{first_name} {last_name}".strip() or f"Prospect {index + 1}"
 
 with col_params:
-    st.markdown('<div class="section">1. Entrez votre clé API Anthropic</div>', unsafe_allow_html=True)
+    st.markdown('<div class="section">🔑 Entrez votre clé API Anthropic</div>', unsafe_allow_html=True)
     show_key = st.checkbox("Afficher la clé API", value=False)
     api_key_input = st.text_input("Clé API", type="default" if show_key else "password")
     
@@ -172,7 +393,7 @@ with col_params:
             st.bar_chart(chart_data.set_index("Date"))
 
 with col_params:
-    st.markdown('<div class="section">2. Déposez le fichier CSV Sales Navigator</div>', unsafe_allow_html=True)
+    st.markdown('<div class="section">📁 Déposez le fichier CSV Sales Navigator</div>', unsafe_allow_html=True)
     uploaded_file = st.file_uploader("Fichier CSV", type="csv")
 
 df = None
@@ -225,7 +446,7 @@ if uploaded_file:
                         st.warning(f"Attention : {e}")
 
 with col_params:
-    st.markdown('<div class="section">3. Paramètres du modèle</div>', unsafe_allow_html=True)
+    st.markdown('<div class="section">⚙️ Paramètres du modèle</div>', unsafe_allow_html=True)
     model_choice = st.selectbox("Modèle :", [
         "claude-3-5-sonnet-20241022",
         "claude-3-5-sonnet-20240620",
@@ -234,7 +455,7 @@ with col_params:
     temperature = st.slider("Température", 0.0, 1.0, 0.7, 0.1)
     max_tokens = st.selectbox("max_tokens", [500, 1000, 1500, 2000, 3000], index=2)
 
-    st.markdown('<div class="section">4. Prompt personnalisable</div>', unsafe_allow_html=True)
+    st.markdown('<div class="section">✍️ Prompt personnalisable</div>', unsafe_allow_html=True)
     prompt_history = load_prompt_history()
     prompt_names = list(prompt_history.keys())
     selected_prompt = st.selectbox("📚 Choisir un prompt enregistré :", ["Nouveau prompt"] + prompt_names)
@@ -350,7 +571,7 @@ Commence ta réponse directement par [ et termine par ]"""
         if st.session_state.preview_data:
             with st.expander(f"📧 Aperçu pour {st.session_state.preview_data['prospect']}", expanded=True):
                 email_data = st.session_state.preview_data['email']
-                st.markdown(f"**📧 Objet :** {email_data.get('subject', 'N/A')}")
+                st.markdown(f"<div class='email-subject'>📧 Objet : {email_data.get('subject', 'N/A')}</div>", unsafe_allow_html=True)
                 st.text_area(
                     "Message :", 
                     value=email_data.get('message', 'N/A'), 
@@ -513,19 +734,12 @@ with col_params:
                     except Exception as e:
                         st.warning(f"Erreur de sauvegarde temporaire : {e}")
 
-                    # Affichage unique dans zone réservée
+                    # Affichage unique dans zone réservée avec style amélioré
                     with display_area.container():
                         st.markdown(f"### 📧 Emails pour {full_name}")
                         for i in range(4):
                             with st.expander(f"Email {i+1}: {email_json[i]['subject']}", expanded=(i == 0)):
-                                st.markdown(f"**Objet:** {email_json[i]['subject']}")
-                                st.text_area(
-                                    "Message:", 
-                                    value=email_json[i]['message'], 
-                                    height=150, 
-                                    key=f"email_{idx}_{i}",
-                                    disabled=True
-                                )
+                                st.markdown(f"<div class='email-box'><div class='email-subject'>📧 Objet: {email_json[i]['subject']}</div><div class='email-message'>{email_json[i]['message']}</div></div>", unsafe_allow_html=True)
 
                     if idx % 10 == 9:
                         try:
@@ -577,21 +791,27 @@ if uploaded_file is None:
     with col_output:
         st.info("👆 Uploadez un fichier CSV pour commencer la génération d'emails personnalisés.")
         st.markdown("""
-        ### 📋 Instructions :
-        1. **Clé API** : Entrez votre clé API Anthropic
-        2. **Fichier CSV** : Uploadez votre export Sales Navigator 
-        3. **Prompt** : Personnalisez le prompt ou utilisez un modèle sauvegardé
-        4. **Génération** : Lancez la génération automatique
+        <div style='background: linear-gradient(145deg, #1a1a1a, #2d2d2d); border: 1px solid #ff6b35; border-radius: 12px; padding: 20px; margin-top: 20px;'>
+        <h3 style='color: #ff8c42; margin-bottom: 20px;'>📋 Instructions :</h3>
+        <div style='color: #e0e0e0; line-height: 1.6;'>
+        <p><strong style='color: #ff6b35;'>1. Clé API</strong> : Entrez votre clé API Anthropic</p>
+        <p><strong style='color: #ff6b35;'>2. Fichier CSV</strong> : Uploadez votre export Sales Navigator</p>
+        <p><strong style='color: #ff6b35;'>3. Prompt</strong> : Personnalisez le prompt ou utilisez un modèle sauvegardé</p>
+        <p><strong style='color: #ff6b35;'>4. Génération</strong> : Lancez la génération automatique</p>
+        </div>
         
-        ### 💡 Fonctionnalités :
-        - ✅ **Prévisualisation en direct** - Testez vos prompts avant génération
-        - ✅ **Statistiques d'utilisation** - Suivez vos performances et coûts
-        - ✅ Reprise de session en cas d'interruption
-        - ✅ Sauvegarde automatique des prompts
-        - ✅ Téléchargement progressif des résultats
-        - ✅ Gestion automatique du quota API
-        - ✅ **Métriques temps réel** pendant la génération
-        """)
+        <h3 style='color: #ff8c42; margin-top: 30px; margin-bottom: 20px;'>💡 Fonctionnalités :</h3>
+        <div style='color: #e0e0e0; line-height: 1.6;'>
+        <p>✅ <strong style='color: #ff6b35;'>Prévisualisation en direct</strong> - Testez vos prompts avant génération</p>
+        <p>✅ <strong style='color: #ff6b35;'>Statistiques d'utilisation</strong> - Suivez vos performances et coûts</p>
+        <p>✅ Reprise de session en cas d'interruption</p>
+        <p>✅ Sauvegarde automatique des prompts</p>
+        <p>✅ Téléchargement progressif des résultats</p>
+        <p>✅ Gestion automatique du quota API</p>
+        <p>✅ <strong style='color: #ff6b35;'>Métriques temps réel</strong> pendant la génération</p>
+        </div>
+        </div>
+        """, unsafe_allow_html=True)
 
 # Onglet statistiques avancées dans la sidebar
 with st.sidebar:
@@ -599,13 +819,13 @@ with st.sidebar:
     stats = load_stats()
     
     if stats["total_requests"] > 0:
-        st.write(f"**Requêtes totales :** {stats['total_requests']}")
-        st.write(f"**Succès :** {stats['successful_requests']}")
-        st.write(f"**Échecs :** {stats['failed_requests']}")
+        st.markdown(f"<div style='color: #e0e0e0;'><strong style='color: #ff8c42;'>Requêtes totales :</strong> {stats['total_requests']}</div>", unsafe_allow_html=True)
+        st.markdown(f"<div style='color: #e0e0e0;'><strong style='color: #ff8c42;'>Succès :</strong> {stats['successful_requests']}</div>", unsafe_allow_html=True)
+        st.markdown(f"<div style='color: #e0e0e0;'><strong style='color: #ff8c42;'>Échecs :</strong> {stats['failed_requests']}</div>", unsafe_allow_html=True)
         
         # Coût estimé total
         total_cost = sum([day_data.get("cost", 0) for day_data in stats["daily_usage"].values()])
-        st.write(f"**Coût estimé :** ${total_cost:.3f}")
+        st.markdown(f"<div style='color: #e0e0e0;'><strong style='color: #ff8c42;'>Coût estimé :</strong> ${total_cost:.3f}</div>", unsafe_allow_html=True)
         
         # Graphique linéaire des derniers jours
         if len(stats["daily_usage"]) > 1:
