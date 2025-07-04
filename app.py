@@ -1,5 +1,5 @@
 # email_generator_ui.py
-# Version ultra-moderne - Design maximum avec Streamlit
+# Version style Claude - Interface élégante et moderne
 
 import streamlit as st
 import pandas as pd
@@ -15,11 +15,11 @@ TEMP_FILE = "generation_temp.csv"
 PROMPT_HISTORY_FILE = "prompt_history.json"
 STATS_FILE = "usage_stats.json"
 
-# STYLES ULTRA-MODERNES
+# STYLES INSPIRÉS DE CLAUDE
 st.set_page_config(page_title="Silviomotion AI", layout="wide", initial_sidebar_state="collapsed")
 st.markdown("""
     <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
     
     /* RESET ET BASE */
     * {
@@ -29,400 +29,348 @@ st.markdown("""
     }
     
     html, body, [class*="css"] {
-        font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-        background: #0a0a0a;
-        color: #ffffff;
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        background: #fafafa;
+        color: #2d3748;
+        line-height: 1.6;
     }
     
-    /* VARIABLES CSS */
+    /* VARIABLES CSS - PALETTE CLAUDE */
     :root {
-        --primary-orange: #ff6b35;
-        --secondary-orange: #ff8c42;
-        --accent-orange: #ff4500;
-        --dark-bg: #0a0a0a;
-        --card-bg: rgba(20, 20, 20, 0.8);
-        --glass-bg: rgba(255, 255, 255, 0.05);
-        --border-color: rgba(255, 107, 53, 0.3);
-        --text-primary: #ffffff;
-        --text-secondary: #b0b0b0;
-        --shadow-primary: 0 8px 32px rgba(255, 107, 53, 0.2);
-        --shadow-secondary: 0 4px 16px rgba(0, 0, 0, 0.4);
-        --gradient-primary: linear-gradient(135deg, #ff6b35 0%, #ff8c42 100%);
-        --gradient-glass: linear-gradient(135deg, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0.05) 100%);
-        --border-radius: 16px;
-        --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        --primary-orange: #e97749;
+        --primary-orange-light: #f4a688;
+        --primary-orange-dark: #d65d33;
+        --accent-orange: #ff8c42;
+        --bg-primary: #fafafa;
+        --bg-secondary: #ffffff;
+        --bg-tertiary: #f7fafc;
+        --text-primary: #2d3748;
+        --text-secondary: #4a5568;
+        --text-muted: #718096;
+        --border-light: #e2e8f0;
+        --border-medium: #cbd5e0;
+        --success: #48bb78;
+        --warning: #ed8936;
+        --error: #f56565;
+        --info: #4299e1;
+        --radius-sm: 6px;
+        --radius-md: 8px;
+        --radius-lg: 12px;
+        --spacing-xs: 0.25rem;
+        --spacing-sm: 0.5rem;
+        --spacing-md: 1rem;
+        --spacing-lg: 1.5rem;
+        --spacing-xl: 2rem;
+        --transition: all 0.2s ease;
     }
     
     /* CONTENEUR PRINCIPAL */
     .main {
-        background: radial-gradient(ellipse at top, rgba(255, 107, 53, 0.1) 0%, transparent 70%),
-                    linear-gradient(180deg, #0a0a0a 0%, #121212 100%);
+        background: var(--bg-primary);
         min-height: 100vh;
         padding: 0;
     }
     
     .block-container {
-        padding: 2rem 1rem;
-        max-width: 1400px;
+        padding: var(--spacing-xl) var(--spacing-lg);
+        max-width: 1200px;
     }
     
-    /* HEADER MODERNE */
-    .modern-header {
+    /* HEADER ÉLÉGANT */
+    .elegant-header {
         text-align: center;
-        padding: 3rem 0 4rem 0;
-        position: relative;
-        overflow: hidden;
+        padding: var(--spacing-xl) 0;
+        margin-bottom: var(--spacing-xl);
+        border-bottom: 1px solid var(--border-light);
     }
     
     .header-title {
-        font-size: clamp(2.5rem, 5vw, 4rem);
-        font-weight: 800;
-        background: var(--gradient-primary);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-        background-clip: text;
-        margin-bottom: 1rem;
-        letter-spacing: -0.02em;
-        position: relative;
+        font-size: 2.5rem;
+        font-weight: 600;
+        color: var(--text-primary);
+        margin-bottom: var(--spacing-sm);
+        letter-spacing: -0.025em;
+    }
+    
+    .header-accent {
+        color: var(--primary-orange);
     }
     
     .header-subtitle {
-        font-size: 1.25rem;
+        font-size: 1.125rem;
         color: var(--text-secondary);
         font-weight: 400;
         max-width: 600px;
         margin: 0 auto;
-        line-height: 1.6;
     }
     
-    .header-bg {
-        position: absolute;
-        top: -50%;
-        left: -50%;
-        width: 200%;
-        height: 200%;
-        background: radial-gradient(circle, rgba(255, 107, 53, 0.1) 0%, transparent 70%);
-        animation: rotate 20s linear infinite;
-        z-index: -1;
-    }
-    
-    @keyframes rotate {
-        0% { transform: rotate(0deg); }
-        100% { transform: rotate(360deg); }
-    }
-    
-    /* CARTES GLASS MORPHISM */
-    .glass-card {
-        background: var(--glass-bg);
-        backdrop-filter: blur(16px) saturate(180%);
-        border: 1px solid var(--border-color);
-        border-radius: var(--border-radius);
-        box-shadow: var(--shadow-primary), inset 0 1px 0 rgba(255, 255, 255, 0.1);
-        padding: 2rem;
-        margin-bottom: 2rem;
+    /* CARTES ÉLÉGANTES */
+    .elegant-card {
+        background: var(--bg-secondary);
+        border: 1px solid var(--border-light);
+        border-radius: var(--radius-lg);
+        padding: var(--spacing-xl);
+        margin-bottom: var(--spacing-lg);
         transition: var(--transition);
-        position: relative;
-        overflow: hidden;
     }
     
-    .glass-card::before {
-        content: '';
-        position: absolute;
-        top: 0;
-        left: 0;
-        right: 0;
-        height: 1px;
-        background: var(--gradient-primary);
-        opacity: 0.6;
+    .elegant-card:hover {
+        border-color: var(--border-medium);
     }
     
-    .glass-card:hover {
-        transform: translateY(-4px);
-        box-shadow: 0 12px 40px rgba(255, 107, 53, 0.3), var(--shadow-secondary);
-        border-color: var(--primary-orange);
-    }
-    
-    /* SECTIONS MODERNES */
+    /* SECTIONS */
     .section-title {
-        font-size: 1.5rem;
-        font-weight: 700;
-        color: var(--primary-orange);
-        margin-bottom: 1.5rem;
+        font-size: 1.25rem;
+        font-weight: 600;
+        color: var(--text-primary);
+        margin-bottom: var(--spacing-lg);
         display: flex;
         align-items: center;
-        gap: 0.75rem;
-        position: relative;
+        gap: var(--spacing-sm);
     }
     
-    .section-title::after {
-        content: '';
-        flex: 1;
-        height: 2px;
-        background: linear-gradient(90deg, var(--primary-orange) 0%, transparent 100%);
+    .section-title .emoji {
+        font-size: 1.1rem;
     }
     
-    /* MÉTRIQUES MODERNES */
-    .metrics-grid {
+    /* MÉTRIQUES STYLE CLAUDE */
+    .metrics-container {
         display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-        gap: 1.5rem;
-        margin-bottom: 2rem;
+        grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+        gap: var(--spacing-md);
+        margin-bottom: var(--spacing-lg);
     }
     
-    .metric-card {
-        background: var(--card-bg);
-        border: 1px solid var(--border-color);
-        border-radius: 12px;
-        padding: 1.5rem;
+    .metric-item {
+        background: var(--bg-tertiary);
+        border: 1px solid var(--border-light);
+        border-radius: var(--radius-md);
+        padding: var(--spacing-lg);
         text-align: center;
-        position: relative;
-        overflow: hidden;
         transition: var(--transition);
     }
     
-    .metric-card::before {
-        content: '';
-        position: absolute;
-        top: 0;
-        left: 0;
-        right: 0;
-        height: 3px;
-        background: var(--gradient-primary);
-    }
-    
-    .metric-card:hover {
-        transform: translateY(-2px);
-        border-color: var(--primary-orange);
+    .metric-item:hover {
+        background: var(--bg-secondary);
+        border-color: var(--primary-orange-light);
     }
     
     .metric-value {
-        font-size: 2rem;
-        font-weight: 800;
+        font-size: 1.75rem;
+        font-weight: 700;
         color: var(--primary-orange);
-        margin-bottom: 0.5rem;
+        margin-bottom: var(--spacing-xs);
+        line-height: 1;
     }
     
     .metric-label {
         font-size: 0.875rem;
-        color: var(--text-secondary);
+        color: var(--text-muted);
         font-weight: 500;
     }
     
-    /* INPUTS MODERNES */
+    /* INPUTS STYLE CLAUDE */
     .stTextInput > div > div > input,
     .stTextArea > div > div > textarea,
     .stSelectbox > div > div > div {
-        background: rgba(20, 20, 20, 0.8) !important;
-        border: 1px solid var(--border-color) !important;
-        border-radius: 12px !important;
+        background: var(--bg-secondary) !important;
+        border: 1px solid var(--border-light) !important;
+        border-radius: var(--radius-md) !important;
         color: var(--text-primary) !important;
         font-family: 'Inter', sans-serif !important;
         font-size: 14px !important;
-        transition: var(--transition) !important;
         padding: 12px 16px !important;
+        transition: var(--transition) !important;
     }
     
     .stTextInput > div > div > input:focus,
     .stTextArea > div > div > textarea:focus {
         border-color: var(--primary-orange) !important;
-        box-shadow: 0 0 0 3px rgba(255, 107, 53, 0.1) !important;
         outline: none !important;
     }
     
-    /* BOUTONS ULTRA-MODERNES */
+    .stTextInput > div > div > input::placeholder,
+    .stTextArea > div > div > textarea::placeholder {
+        color: var(--text-muted) !important;
+    }
+    
+    /* BOUTONS STYLE CLAUDE */
     .stButton > button {
-        background: var(--gradient-primary) !important;
-        border: none !important;
-        border-radius: 12px !important;
-        color: white !important;
+        background: var(--bg-secondary) !important;
+        border: 1px solid var(--border-medium) !important;
+        border-radius: var(--radius-md) !important;
+        color: var(--text-primary) !important;
         font-family: 'Inter', sans-serif !important;
-        font-weight: 600 !important;
-        padding: 12px 24px !important;
+        font-weight: 500 !important;
+        padding: 10px 16px !important;
         transition: var(--transition) !important;
-        position: relative !important;
-        overflow: hidden !important;
         font-size: 14px !important;
     }
     
-    .stButton > button::before {
-        content: '';
-        position: absolute;
-        top: 0;
-        left: -100%;
-        width: 100%;
-        height: 100%;
-        background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
-        transition: left 0.5s;
-    }
-    
     .stButton > button:hover {
-        transform: translateY(-2px) !important;
-        box-shadow: 0 8px 32px rgba(255, 107, 53, 0.4) !important;
-    }
-    
-    .stButton > button:hover::before {
-        left: 100%;
+        background: var(--bg-tertiary) !important;
+        border-color: var(--primary-orange-light) !important;
     }
     
     /* BOUTON PRINCIPAL */
     .stButton > button[kind="primary"] {
-        background: linear-gradient(135deg, var(--accent-orange) 0%, var(--primary-orange) 100%) !important;
-        font-size: 16px !important;
-        padding: 16px 32px !important;
-        box-shadow: var(--shadow-primary) !important;
-        font-weight: 700 !important;
+        background: var(--primary-orange) !important;
+        border: 1px solid var(--primary-orange) !important;
+        color: white !important;
+        font-weight: 600 !important;
+        padding: 12px 20px !important;
+    }
+    
+    .stButton > button[kind="primary"]:hover {
+        background: var(--primary-orange-dark) !important;
+        border-color: var(--primary-orange-dark) !important;
     }
     
     /* PROGRESS BAR */
     .stProgress > div > div > div > div {
-        background: var(--gradient-primary) !important;
-        border-radius: 8px !important;
-        height: 8px !important;
+        background: var(--primary-orange) !important;
+        border-radius: var(--radius-sm) !important;
     }
     
     .stProgress > div > div > div {
-        background: rgba(255, 255, 255, 0.1) !important;
-        border-radius: 8px !important;
+        background: var(--border-light) !important;
+        border-radius: var(--radius-sm) !important;
     }
     
-    /* SIDEBAR MODERNE */
+    /* SIDEBAR STYLE CLAUDE */
     .css-1d391kg {
-        background: linear-gradient(180deg, rgba(10, 10, 10, 0.95) 0%, rgba(20, 20, 20, 0.95) 100%) !important;
-        backdrop-filter: blur(16px) !important;
-        border-right: 1px solid var(--border-color) !important;
+        background: var(--bg-secondary) !important;
+        border-right: 1px solid var(--border-light) !important;
     }
     
-    /* EXPANDER MODERNE */
+    /* EXPANDER STYLE CLAUDE */
     .streamlit-expanderHeader {
-        background: var(--card-bg) !important;
-        border: 1px solid var(--border-color) !important;
-        border-radius: 12px !important;
-        color: var(--primary-orange) !important;
-        font-weight: 600 !important;
+        background: var(--bg-tertiary) !important;
+        border: 1px solid var(--border-light) !important;
+        border-radius: var(--radius-md) !important;
+        color: var(--text-primary) !important;
+        font-weight: 500 !important;
         transition: var(--transition) !important;
     }
     
     .streamlit-expanderHeader:hover {
-        border-color: var(--primary-orange) !important;
-        background: rgba(255, 107, 53, 0.1) !important;
+        background: var(--bg-secondary) !important;
+        border-color: var(--primary-orange-light) !important;
     }
     
     .streamlit-expanderContent {
-        background: var(--card-bg) !important;
-        border: 1px solid var(--border-color) !important;
+        background: var(--bg-secondary) !important;
+        border: 1px solid var(--border-light) !important;
         border-top: none !important;
-        border-radius: 0 0 12px 12px !important;
-        padding: 1.5rem !important;
+        border-radius: 0 0 var(--radius-md) var(--radius-md) !important;
+        padding: var(--spacing-lg) !important;
     }
     
-    /* EMAIL BOX ULTRA-MODERNE */
+    /* EMAIL CARDS ÉLÉGANTES */
     .email-card {
-        background: var(--glass-bg);
-        backdrop-filter: blur(16px);
-        border: 1px solid var(--border-color);
-        border-radius: 16px;
-        padding: 1.5rem;
-        margin-bottom: 1rem;
-        position: relative;
-        overflow: hidden;
+        background: var(--bg-tertiary);
+        border: 1px solid var(--border-light);
+        border-radius: var(--radius-md);
+        padding: var(--spacing-lg);
+        margin-bottom: var(--spacing-md);
         transition: var(--transition);
     }
     
-    .email-card::before {
-        content: '';
-        position: absolute;
-        top: 0;
-        left: 0;
-        right: 0;
-        height: 2px;
-        background: var(--gradient-primary);
-    }
-    
     .email-card:hover {
-        transform: translateX(4px);
-        border-color: var(--primary-orange);
+        background: var(--bg-secondary);
+        border-color: var(--primary-orange-light);
     }
     
     .email-subject {
-        font-size: 1.1rem;
-        font-weight: 700;
-        color: var(--secondary-orange);
-        margin-bottom: 1rem;
+        font-size: 1rem;
+        font-weight: 600;
+        color: var(--text-primary);
+        margin-bottom: var(--spacing-md);
         display: flex;
         align-items: center;
-        gap: 0.5rem;
+        gap: var(--spacing-sm);
+    }
+    
+    .email-subject .emoji {
+        color: var(--primary-orange);
     }
     
     .email-body {
         color: var(--text-secondary);
         line-height: 1.6;
-        background: rgba(0, 0, 0, 0.3);
-        padding: 1rem;
-        border-radius: 8px;
+        background: var(--bg-secondary);
+        padding: var(--spacing-md);
+        border-radius: var(--radius-sm);
         border-left: 3px solid var(--primary-orange);
         font-size: 14px;
     }
     
-    /* NOTIFICATIONS MODERNES */
+    /* NOTIFICATIONS STYLE CLAUDE */
     .stSuccess, .stError, .stWarning, .stInfo {
-        border-radius: 12px !important;
-        border: none !important;
-        backdrop-filter: blur(16px) !important;
+        border-radius: var(--radius-md) !important;
+        border: 1px solid !important;
         font-family: 'Inter', sans-serif !important;
+        font-weight: 500 !important;
     }
     
     .stSuccess {
-        background: rgba(34, 197, 94, 0.1) !important;
-        border-left: 4px solid #22c55e !important;
-        color: #22c55e !important;
+        background: #f0fff4 !important;
+        border-color: var(--success) !important;
+        color: #22543d !important;
     }
     
     .stError {
-        background: rgba(239, 68, 68, 0.1) !important;
-        border-left: 4px solid #ef4444 !important;
-        color: #ef4444 !important;
+        background: #fed7d7 !important;
+        border-color: var(--error) !important;
+        color: #742a2a !important;
     }
     
     .stWarning {
-        background: rgba(251, 191, 36, 0.1) !important;
-        border-left: 4px solid #fbbf24 !important;
-        color: #fbbf24 !important;
+        background: #fefcbf !important;
+        border-color: var(--warning) !important;
+        color: #744210 !important;
     }
     
     .stInfo {
-        background: rgba(59, 130, 246, 0.1) !important;
-        border-left: 4px solid #3b82f6 !important;
-        color: #3b82f6 !important;
+        background: #bee3f8 !important;
+        border-color: var(--info) !important;
+        color: #2c5282 !important;
     }
     
-    /* UPLOAD ZONE MODERNE */
+    /* UPLOAD ZONE */
     .stFileUploader > div {
-        background: var(--glass-bg) !important;
-        border: 2px dashed var(--border-color) !important;
-        border-radius: 16px !important;
+        background: var(--bg-secondary) !important;
+        border: 2px dashed var(--border-medium) !important;
+        border-radius: var(--radius-lg) !important;
         transition: var(--transition) !important;
-        padding: 2rem !important;
     }
     
     .stFileUploader > div:hover {
-        border-color: var(--primary-orange) !important;
-        background: rgba(255, 107, 53, 0.05) !important;
+        border-color: var(--primary-orange-light) !important;
+        background: var(--bg-tertiary) !important;
     }
     
-    /* CHECKBOX MODERNE */
+    /* CHECKBOX STYLE CLAUDE */
     .stCheckbox > label {
         color: var(--text-primary) !important;
         font-family: 'Inter', sans-serif !important;
         font-weight: 500 !important;
     }
     
-    /* SLIDER MODERNE */
+    /* SLIDER STYLE CLAUDE */
     .stSlider > div > div > div > div {
         background: var(--primary-orange) !important;
     }
     
     .stSlider > div > div > div {
-        background: rgba(255, 255, 255, 0.1) !important;
+        background: var(--border-light) !important;
+    }
+    
+    /* SELECTBOX STYLE CLAUDE */
+    .stSelectbox > div > div {
+        background: var(--bg-secondary) !important;
+        border: 1px solid var(--border-light) !important;
+        border-radius: var(--radius-md) !important;
     }
     
     /* HIDE STREAMLIT BRANDING */
@@ -431,86 +379,126 @@ st.markdown("""
     header {visibility: hidden;}
     .stDeployButton {display: none;}
     
-    /* CUSTOM SCROLLBAR */
+    /* SCROLLBAR STYLE CLAUDE */
     ::-webkit-scrollbar {
-        width: 8px;
+        width: 6px;
     }
     
     ::-webkit-scrollbar-track {
-        background: rgba(255, 255, 255, 0.1);
+        background: var(--bg-tertiary);
     }
     
     ::-webkit-scrollbar-thumb {
-        background: var(--gradient-primary);
-        border-radius: 4px;
+        background: var(--border-medium);
+        border-radius: 3px;
     }
     
     ::-webkit-scrollbar-thumb:hover {
-        background: var(--secondary-orange);
+        background: var(--text-muted);
+    }
+    
+    /* BADGES ET LABELS */
+    .status-badge {
+        display: inline-flex;
+        align-items: center;
+        padding: 4px 8px;
+        background: var(--bg-tertiary);
+        border: 1px solid var(--border-light);
+        border-radius: var(--radius-sm);
+        font-size: 0.75rem;
+        font-weight: 500;
+        color: var(--text-secondary);
+    }
+    
+    .status-badge.success {
+        background: #f0fff4;
+        border-color: var(--success);
+        color: #22543d;
+    }
+    
+    .status-badge.warning {
+        background: #fefcbf;
+        border-color: var(--warning);
+        color: #744210;
+    }
+    
+    /* DIVIDERS */
+    .divider {
+        height: 1px;
+        background: var(--border-light);
+        margin: var(--spacing-lg) 0;
     }
     
     /* RESPONSIVE */
     @media (max-width: 768px) {
         .block-container {
-            padding: 1rem 0.5rem;
+            padding: var(--spacing-md);
         }
         
-        .glass-card {
-            padding: 1.5rem;
+        .elegant-card {
+            padding: var(--spacing-lg);
         }
         
         .header-title {
-            font-size: 2.5rem;
+            font-size: 2rem;
+        }
+        
+        .metrics-container {
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
         }
     }
     
-    /* ANIMATIONS */
-    @keyframes fadeInUp {
-        from {
-            opacity: 0;
-            transform: translateY(30px);
-        }
-        to {
-            opacity: 1;
-            transform: translateY(0);
-        }
+    /* ANIMATIONS SUBTILES */
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(8px); }
+        to { opacity: 1; transform: translateY(0); }
     }
     
-    .animate-fadeInUp {
-        animation: fadeInUp 0.6s ease-out;
+    .fade-in {
+        animation: fadeIn 0.3s ease-out;
     }
     
-    @keyframes pulse {
-        0%, 100% {
-            transform: scale(1);
-        }
-        50% {
-            transform: scale(1.05);
-        }
+    /* FOCUS STATES */
+    .stTextInput > div > div > input:focus,
+    .stTextArea > div > div > textarea:focus,
+    .stSelectbox > div > div:focus-within {
+        border-color: var(--primary-orange) !important;
+        outline: none !important;
     }
     
-    .pulse-animation {
-        animation: pulse 2s infinite;
+    /* LOADING STATES */
+    .loading-text {
+        color: var(--text-muted);
+        font-style: italic;
     }
     
-    /* LOADING SPINNER */
-    @keyframes spin {
-        0% { transform: rotate(0deg); }
-        100% { transform: rotate(360deg); }
+    /* TABLES */
+    .dataframe {
+        border: 1px solid var(--border-light) !important;
+        border-radius: var(--radius-md) !important;
     }
     
-    .loading-spinner {
-        animation: spin 1s linear infinite;
+    .dataframe th {
+        background: var(--bg-tertiary) !important;
+        color: var(--text-primary) !important;
+        font-weight: 600 !important;
+    }
+    
+    .dataframe td {
+        border-color: var(--border-light) !important;
     }
     </style>
 """, unsafe_allow_html=True)
 
-# HEADER ULTRA-MODERNE
+# HEADER ÉLÉGANT STYLE CLAUDE
 st.markdown("""
-    <div class="modern-header">
-        <div class="header-bg"></div>
-        <h1 class="header-title">🎥 Silviomotion AI</h1>
-        <p class="header-subtitle">Générateur d'emails ultra-personnalisés powered by Claude AI</p>
+    <div class="elegant-header fade-in">
+        <h1 class="header-title">
+            <span class="header-accent">Silviomotion</span> AI
+        </h1>
+        <p class="header-subtitle">
+            Génération intelligente d'emails personnalisés avec Claude AI
+        </p>
     </div>
 """, unsafe_allow_html=True)
 
@@ -599,17 +587,20 @@ def get_display_name(df, index):
         return f"{first_name} {last_name}".strip() or f"Prospect {index + 1}"
 
 with col_params:
-    st.markdown('<div class="glass-card animate-fadeInUp">', unsafe_allow_html=True)
-    st.markdown('<div class="section-title">🔑 Configuration API</div>', unsafe_allow_html=True)
+    st.markdown('<div class="elegant-card fade-in">', unsafe_allow_html=True)
+    st.markdown('<div class="section-title"><span class="emoji">🔑</span> Configuration API</div>', unsafe_allow_html=True)
     
     show_key = st.checkbox("Afficher la clé API", value=False)
-    api_key_input = st.text_input("Clé API Anthropic", type="default" if show_key else "password", placeholder="sk-ant-...")
+    api_key_input = st.text_input(
+        "Clé API Anthropic", 
+        type="default" if show_key else "password", 
+        placeholder="sk-ant-api03-..."
+    )
     
     if api_key_input and not st.session_state.api_validated:
         with st.spinner("Validation de la clé API..."):
             try:
                 client = anthropic.Anthropic(api_key=api_key_input)
-                # Test simple avec le modèle le moins cher
                 test_response = client.messages.create(
                     model="claude-3-haiku-20240307", 
                     max_tokens=10, 
@@ -617,15 +608,15 @@ with col_params:
                 )
                 st.session_state.client = client
                 st.session_state.api_validated = True
-                st.success("✅ Clé API validée avec succès !")
+                st.success("✅ Clé API validée avec succès")
             except Exception as e:
-                st.error(f"❌ Clé API invalide : {str(e)[:100]}...")
+                st.error(f"❌ Clé API invalide : {str(e)[:50]}...")
                 st.session_state.api_validated = False
     
     st.markdown('</div>', unsafe_allow_html=True)
     
     if not api_key_input:
-        st.warning("⚠️ Veuillez entrer votre clé API Anthropic pour continuer.")
+        st.warning("⚠️ Veuillez entrer votre clé API Anthropic pour continuer")
         st.stop()
     
     if not st.session_state.api_validated:
@@ -636,40 +627,44 @@ start_idx = 0
 result_df = None
 
 with col_params:
-    st.markdown('<div class="glass-card">', unsafe_allow_html=True)
-    st.markdown('<div class="section-title">📊 Dashboard Analytics</div>', unsafe_allow_html=True)
+    st.markdown('<div class="elegant-card">', unsafe_allow_html=True)
+    st.markdown('<div class="section-title"><span class="emoji">📊</span> Analytics</div>', unsafe_allow_html=True)
     
     stats = load_stats()
     
-    # Métriques modernes
+    # Métriques style Claude
+    st.markdown('<div class="metrics-container">', unsafe_allow_html=True)
+    
     col_stat1, col_stat2, col_stat3 = st.columns(3)
     with col_stat1:
         st.markdown(f"""
-            <div class="metric-card">
+            <div class="metric-item">
                 <div class="metric-value">{stats["total_requests"]}</div>
-                <div class="metric-label">Total Requêtes</div>
+                <div class="metric-label">Requêtes</div>
             </div>
         """, unsafe_allow_html=True)
     
     with col_stat2:
         success_rate = (stats["successful_requests"] / max(stats["total_requests"], 1)) * 100
         st.markdown(f"""
-            <div class="metric-card">
+            <div class="metric-item">
                 <div class="metric-value">{success_rate:.1f}%</div>
-                <div class="metric-label">Taux de Succès</div>
+                <div class="metric-label">Succès</div>
             </div>
         """, unsafe_allow_html=True)
     
     with col_stat3:
         today_usage = stats["daily_usage"].get(date.today().isoformat(), {"requests": 0})
         st.markdown(f"""
-            <div class="metric-card">
+            <div class="metric-item">
                 <div class="metric-value">{today_usage['requests']}</div>
                 <div class="metric-label">Aujourd'hui</div>
             </div>
         """, unsafe_allow_html=True)
     
-    # Graphique des 7 derniers jours
+    st.markdown('</div>', unsafe_allow_html=True)
+    
+    # Graphique simple
     if len(stats["daily_usage"]) > 0:
         last_7_days = sorted(stats["daily_usage"].items())[-7:]
         if last_7_days:
@@ -682,13 +677,13 @@ with col_params:
     st.markdown('</div>', unsafe_allow_html=True)
 
 with col_params:
-    st.markdown('<div class="glass-card">', unsafe_allow_html=True)
-    st.markdown('<div class="section-title">📁 Import de Données</div>', unsafe_allow_html=True)
+    st.markdown('<div class="elegant-card">', unsafe_allow_html=True)
+    st.markdown('<div class="section-title"><span class="emoji">📁</span> Import de données</div>', unsafe_allow_html=True)
     
     uploaded_file = st.file_uploader(
-        "Déposez votre fichier CSV Sales Navigator", 
+        "Fichier CSV Sales Navigator", 
         type="csv",
-        help="Format supporté: CSV avec séparateur ; ou ,"
+        help="Formats supportés : CSV avec séparateur ; ou ,"
     )
     
     st.markdown('</div>', unsafe_allow_html=True)
@@ -696,7 +691,7 @@ with col_params:
 df = None
 if uploaded_file:
     if uploaded_file.size == 0:
-        st.error("❌ Le fichier est vide. Veuillez uploader un CSV valide avec des données.")
+        st.error("Le fichier est vide. Veuillez uploader un CSV valide.")
         st.stop()
     
     try:
@@ -704,10 +699,10 @@ if uploaded_file:
         try:
             df = pd.read_csv(uploaded_file, sep=";")
         except:
-            uploaded_file.seek(0)  # Remettre le curseur au début
+            uploaded_file.seek(0)
             df = pd.read_csv(uploaded_file, sep=",")
         
-        st.success(f"✅ Fichier chargé avec succès ! **{len(df)}** prospects trouvés.")
+        st.success(f"✅ Fichier chargé avec succès - **{len(df)}** prospects trouvés")
         
     except Exception as e:
         st.error(f"❌ Erreur lors de la lecture du fichier : {e}")
@@ -716,8 +711,8 @@ if uploaded_file:
     # Gestion de la reprise de session
     if os.path.exists(TEMP_FILE):
         with col_params:
-            st.markdown('<div class="glass-card">', unsafe_allow_html=True)
-            st.markdown('<div class="section-title">🔄 Reprise de Session</div>', unsafe_allow_html=True)
+            st.markdown('<div class="elegant-card">', unsafe_allow_html=True)
+            st.markdown('<div class="section-title"><span class="emoji">🔄</span> Reprise de session</div>', unsafe_allow_html=True)
             
             col1, col2 = st.columns(2)
             with col1:
@@ -748,10 +743,10 @@ if uploaded_file:
             st.markdown('</div>', unsafe_allow_html=True)
 
 with col_params:
-    st.markdown('<div class="glass-card">', unsafe_allow_html=True)
-    st.markdown('<div class="section-title">⚙️ Configuration IA</div>', unsafe_allow_html=True)
+    st.markdown('<div class="elegant-card">', unsafe_allow_html=True)
+    st.markdown('<div class="section-title"><span class="emoji">⚙️</span> Configuration du modèle</div>', unsafe_allow_html=True)
     
-    model_choice = st.selectbox("Modèle Claude :", [
+    model_choice = st.selectbox("Modèle Claude", [
         "claude-3-5-sonnet-20241022",
         "claude-3-5-sonnet-20240620",
         "claude-3-haiku-20240307"
@@ -761,17 +756,17 @@ with col_params:
     with col_temp:
         temperature = st.slider("Créativité", 0.0, 1.0, 0.7, 0.1)
     with col_tokens:
-        max_tokens = st.selectbox("Longueur", [500, 1000, 1500, 2000, 3000], index=2)
+        max_tokens = st.selectbox("Longueur maximale", [500, 1000, 1500, 2000, 3000], index=2)
     
     st.markdown('</div>', unsafe_allow_html=True)
 
 with col_params:
-    st.markdown('<div class="glass-card">', unsafe_allow_html=True)
-    st.markdown('<div class="section-title">✍️ Prompt Engineering</div>', unsafe_allow_html=True)
+    st.markdown('<div class="elegant-card">', unsafe_allow_html=True)
+    st.markdown('<div class="section-title"><span class="emoji">✍️</span> Prompt personnalisé</div>', unsafe_allow_html=True)
     
     prompt_history = load_prompt_history()
     prompt_names = list(prompt_history.keys())
-    selected_prompt = st.selectbox("📚 Templates sauvegardés :", ["Nouveau prompt"] + prompt_names)
+    selected_prompt = st.selectbox("Templates sauvegardés", ["Nouveau prompt"] + prompt_names)
 
     default_prompt = """Tu es un expert en prospection commerciale pour Silviomotion, une agence de production vidéo.
 
@@ -800,39 +795,39 @@ Commence ta réponse directement par [ et termine par ]"""
         default_prompt = prompt_history[selected_prompt]
 
     prompt = st.text_area(
-        "Prompt personnalisé", 
+        "Instructions pour Claude", 
         value=default_prompt, 
-        height=250,
-        help="Utilisez {{PROSPECT_INFO}} pour insérer automatiquement les données du prospect",
-        placeholder="Votre prompt d'instruction pour Claude..."
+        height=200,
+        help="Utilisez {{PROSPECT_INFO}} pour insérer les données du prospect",
+        placeholder="Décrivez comment Claude doit générer les emails..."
     )
 
-    # Sauvegarde de prompt avec design moderne
+    # Sauvegarde de prompt
     col1, col2 = st.columns([3, 1])
     with col1:
-        new_prompt_name = st.text_input("💾 Nom du template", placeholder="Ex: Prompt Vidéo B2B")
+        new_prompt_name = st.text_input("Nom du template", placeholder="Ex: Emails vidéo B2B")
     with col2:
-        if st.button("💾 Save", use_container_width=True) and new_prompt_name.strip():
+        if st.button("💾 Sauvegarder", use_container_width=True) and new_prompt_name.strip():
             if save_prompt_history(new_prompt_name.strip(), prompt):
-                st.success(f"✅ Template sauvegardé !")
+                st.success(f"✅ Template « {new_prompt_name.strip()} » sauvegardé")
                 time.sleep(1)
                 st.rerun()
     
     st.markdown('</div>', unsafe_allow_html=True)
 
 with col_params:
-    st.markdown('<div class="glass-card">', unsafe_allow_html=True)
-    st.markdown('<div class="section-title">🔍 Live Preview</div>', unsafe_allow_html=True)
+    st.markdown('<div class="elegant-card">', unsafe_allow_html=True)
+    st.markdown('<div class="section-title"><span class="emoji">👁️</span> Prévisualisation</div>', unsafe_allow_html=True)
     
     if df is not None and prompt:
         preview_idx = st.selectbox(
-            "Prospect pour l'aperçu :",
+            "Prospect pour l'aperçu",
             range(len(df)),
             format_func=lambda x: get_display_name(df, x)
         )
         
-        if st.button("👁️ Générer Aperçu", use_container_width=True, help="Test gratuit de votre prompt"):
-            with st.spinner("🤖 Claude génère votre aperçu..."):
+        if st.button("Générer un aperçu", use_container_width=True):
+            with st.spinner("Génération de l'aperçu..."):
                 try:
                     row = df.iloc[preview_idx]
                     content_parts = []
@@ -843,7 +838,7 @@ with col_params:
                     content = "\n".join(content_parts)
                     final_prompt = prompt.replace("{{PROSPECT_INFO}}", content)
                     
-                    # Prompt modifié pour un seul email (économie)
+                    # Prompt modifié pour un seul email
                     single_email_prompt = final_prompt.replace(
                         "4 emails", "1 email"
                     ).replace(
@@ -874,18 +869,18 @@ with col_params:
                     update_stats(success=True, cost_estimate=0.001)
                     
                 except Exception as e:
-                    st.error(f"❌ Erreur preview : {str(e)[:100]}...")
+                    st.error(f"❌ Erreur : {str(e)[:100]}...")
                     update_stats(success=False)
         
-        # Affichage preview moderne
+        # Affichage de l'aperçu
         if st.session_state.preview_data:
-            st.markdown("---")
+            st.markdown('<div class="divider"></div>', unsafe_allow_html=True)
             email_data = st.session_state.preview_data['email']
             
             st.markdown(f"""
                 <div class="email-card">
                     <div class="email-subject">
-                        📧 {email_data.get('subject', 'N/A')}
+                        <span class="emoji">📧</span> {email_data.get('subject', 'N/A')}
                     </div>
                     <div class="email-body">
                         {email_data.get('message', 'N/A').replace(chr(10), '<br>')}
@@ -898,14 +893,14 @@ with col_params:
 # GÉNÉRATION PRINCIPALE
 with col_params:
     if df is not None and prompt:
-        st.markdown('<div class="glass-card">', unsafe_allow_html=True)
+        st.markdown('<div class="elegant-card">', unsafe_allow_html=True)
         
         if not st.session_state.generating:
-            if st.button("🚀 LANCER LA GÉNÉRATION", type="primary", use_container_width=True):
+            if st.button("🚀 Lancer la génération", type="primary", use_container_width=True):
                 st.session_state.generating = True
                 st.rerun()
         else:
-            st.info("🔄 Génération en cours...")
+            st.markdown('<span class="loading-text">🔄 Génération en cours...</span>', unsafe_allow_html=True)
         
         st.markdown('</div>', unsafe_allow_html=True)
 
@@ -922,8 +917,8 @@ if st.session_state.generating and df is not None and prompt:
         start_time = time.time()
 
         with col_output:
-            st.markdown('<div class="glass-card">', unsafe_allow_html=True)
-            st.markdown('<div class="section-title">🤖 Génération en Cours</div>', unsafe_allow_html=True)
+            st.markdown('<div class="elegant-card fade-in">', unsafe_allow_html=True)
+            st.markdown('<div class="section-title"><span class="emoji">🤖</span> Génération en cours</div>', unsafe_allow_html=True)
             
             progress_bar = st.progress(start_idx / total if total > 0 else 0)
             status_text = st.empty()
@@ -934,7 +929,7 @@ if st.session_state.generating and df is not None and prompt:
                 row = df.iloc[idx]
                 full_name = get_display_name(df, idx)
 
-                status_text.markdown(f"**🔄 Processing:** {full_name} ({idx+1}/{total})")
+                status_text.markdown(f"**Traitement :** {full_name} ({idx+1}/{total})")
 
                 try:
                     content_parts = [f"{col}: {row[col]}" for col in df.columns if pd.notna(row[col]) and str(row[col]).strip()]
@@ -957,7 +952,7 @@ if st.session_state.generating and df is not None and prompt:
                     if not response_text:
                         raise ValueError("Réponse vide")
                     
-                    # Nettoyage robuste
+                    # Nettoyage
                     if response_text.startswith("```json"):
                         response_text = response_text.replace("```json", "").replace("```", "").strip()
                     elif response_text.startswith("```"):
@@ -1001,7 +996,7 @@ if st.session_state.generating and df is not None and prompt:
                             st.error(f"Erreur JSON pour {full_name}")
                             raise ValueError(f"Parse JSON impossible: {json_err}")
 
-                    # Validation structure
+                    # Validation
                     if not isinstance(email_json, list):
                         raise ValueError(f"Réponse non-liste: {type(email_json)}")
                     
@@ -1049,15 +1044,15 @@ if st.session_state.generating and df is not None and prompt:
                 except Exception as e:
                     st.warning(f"Erreur sauvegarde : {e}")
 
-                # Affichage moderne des résultats
+                # Affichage des résultats
                 with display_area.container():
-                    st.markdown(f"### 📧 Emails générés pour **{full_name}**")
+                    st.markdown(f"### Emails générés pour **{full_name}**")
                     
                     for i in range(4):
                         st.markdown(f"""
                             <div class="email-card">
                                 <div class="email-subject">
-                                    📧 Email {i+1}: {email_json[i]['subject']}
+                                    <span class="emoji">📧</span> Email {i+1}: {email_json[i]['subject']}
                                 </div>
                                 <div class="email-body">
                                     {email_json[i]['message'].replace(chr(10), '<br>')}
@@ -1070,7 +1065,7 @@ if st.session_state.generating and df is not None and prompt:
                     try:
                         with open(TEMP_FILE, "rb") as f:
                             st.download_button(
-                                "💾 Télécharger progression",
+                                "💾 Télécharger la progression",
                                 data=f.read(),
                                 file_name=f"emails_progress_{idx+1}.csv",
                                 mime="text/csv",
@@ -1090,13 +1085,13 @@ if st.session_state.generating and df is not None and prompt:
                 time.sleep(0.1)
 
             # Finalisation
-            status_text.markdown("**✅ Génération terminée !**")
+            status_text.markdown("**✅ Génération terminée**")
             
             # Téléchargement final
             if result_df is not None and len(result_df) > 0:
                 csv = result_df.to_csv(index=False, sep=";").encode("utf-8")
                 st.download_button(
-                    "📥 TÉLÉCHARGER LE FICHIER COMPLET",
+                    "📥 Télécharger le fichier complet",
                     data=csv,
                     file_name=f"emails_silviomotion_{date.today().strftime('%Y%m%d')}.csv",
                     mime="text/csv",
@@ -1116,61 +1111,59 @@ if st.session_state.generating and df is not None and prompt:
     finally:
         st.session_state.generating = False
 
-# PAGE D'ACCUEIL MODERNE
+# PAGE D'ACCUEIL ÉLÉGANTE
 if uploaded_file is None:
     with col_output:
         st.markdown("""
-            <div class="glass-card animate-fadeInUp">
-                <div class="section-title">🚀 Bienvenue sur Silviomotion AI</div>
+            <div class="elegant-card fade-in">
+                <div class="section-title"><span class="emoji">🚀</span> Bienvenue sur Silviomotion AI</div>
                 
-                <div style="text-align: center; margin: 2rem 0;">
-                    <div style="font-size: 1.2rem; color: var(--text-secondary); line-height: 1.8;">
-                        <p>🎯 <strong style="color: var(--primary-orange);">Génération automatique</strong> d'emails ultra-personnalisés</p>
-                        <p>🤖 <strong style="color: var(--primary-orange);">Powered by Claude AI</strong> - La plus avancée des IA</p>
-                        <p>📈 <strong style="color: var(--primary-orange);">Analytics en temps réel</strong> - Trackez vos performances</p>
-                        <p>💾 <strong style="color: var(--primary-orange);">Templates intelligents</strong> - Réutilisez vos meilleurs prompts</p>
-                    </div>
+                <div style="margin: 1.5rem 0;">
+                    <p style="font-size: 1.1rem; color: var(--text-secondary); line-height: 1.7;">
+                        Générez automatiquement des emails de prospection ultra-personnalisés 
+                        grâce à l'intelligence artificielle Claude d'Anthropic.
+                    </p>
                 </div>
                 
-                <div style="background: rgba(255, 107, 53, 0.1); border: 1px solid var(--border-color); border-radius: 12px; padding: 1.5rem; margin: 2rem 0;">
-                    <h4 style="color: var(--secondary-orange); margin-bottom: 1rem;">📋 Guide de démarrage :</h4>
-                    <div style="color: var(--text-secondary); line-height: 1.6;">
-                        <p><strong style="color: var(--primary-orange);">1.</strong> Configurez votre clé API Anthropic</p>
-                        <p><strong style="color: var(--primary-orange);">2.</strong> Uploadez votre fichier CSV Sales Navigator</p>
-                        <p><strong style="color: var(--primary-orange);">3.</strong> Personnalisez votre prompt de génération</p>
-                        <p><strong style="color: var(--primary-orange);">4.</strong> Testez avec la prévisualisation live</p>
-                        <p><strong style="color: var(--primary-orange);">5.</strong> Lancez la génération automatique</p>
-                    </div>
+                <div style="background: var(--bg-tertiary); border: 1px solid var(--border-light); border-radius: var(--radius-md); padding: 1.5rem; margin: 1.5rem 0;">
+                    <h4 style="color: var(--text-primary); margin-bottom: 1rem; font-weight: 600;">📋 Guide de démarrage</h4>
+                    <ol style="color: var(--text-secondary); line-height: 1.6; padding-left: 1.2rem;">
+                        <li style="margin-bottom: 0.5rem;"><strong>Configurez</strong> votre clé API Anthropic</li>
+                        <li style="margin-bottom: 0.5rem;"><strong>Uploadez</strong> votre fichier CSV Sales Navigator</li>
+                        <li style="margin-bottom: 0.5rem;"><strong>Personnalisez</strong> votre prompt de génération</li>
+                        <li style="margin-bottom: 0.5rem;"><strong>Testez</strong> avec la prévisualisation</li>
+                        <li><strong>Lancez</strong> la génération automatique</li>
+                    </ol>
                 </div>
                 
-                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-top: 2rem;">
-                    <div style="background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 12px; padding: 1.5rem; text-align: center;">
-                        <div style="font-size: 2rem; margin-bottom: 0.5rem;">⚡</div>
-                        <div style="color: var(--primary-orange); font-weight: 600;">Ultra Rapide</div>
-                        <div style="color: var(--text-secondary); font-size: 0.9rem;">Générez des centaines d'emails en minutes</div>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem; margin-top: 2rem;">
+                    <div style="background: var(--bg-tertiary); border: 1px solid var(--border-light); border-radius: var(--radius-md); padding: 1.2rem; text-align: center;">
+                        <div style="font-size: 1.8rem; margin-bottom: 0.5rem;">⚡</div>
+                        <div style="color: var(--primary-orange); font-weight: 600; margin-bottom: 0.3rem;">Ultra Rapide</div>
+                        <div style="color: var(--text-muted); font-size: 0.85rem;">Centaines d'emails en minutes</div>
                     </div>
                     
-                    <div style="background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 12px; padding: 1.5rem; text-align: center;">
-                        <div style="font-size: 2rem; margin-bottom: 0.5rem;">🎯</div>
-                        <div style="color: var(--primary-orange); font-weight: 600;">Hyper Ciblé</div>
-                        <div style="color: var(--text-secondary); font-size: 0.9rem;">Personnalisation basée sur les données prospect</div>
+                    <div style="background: var(--bg-tertiary); border: 1px solid var(--border-light); border-radius: var(--radius-md); padding: 1.2rem; text-align: center;">
+                        <div style="font-size: 1.8rem; margin-bottom: 0.5rem;">🎯</div>
+                        <div style="color: var(--primary-orange); font-weight: 600; margin-bottom: 0.3rem;">Hyper Ciblé</div>
+                        <div style="color: var(--text-muted); font-size: 0.85rem;">Personnalisation intelligente</div>
                     </div>
                     
-                    <div style="background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 12px; padding: 1.5rem; text-align: center;">
-                        <div style="font-size: 2rem; margin-bottom: 0.5rem;">📊</div>
-                        <div style="color: var(--primary-orange); font-weight: 600;">Analytics Pro</div>
-                        <div style="color: var(--text-secondary); font-size: 0.9rem;">Métriques de performance en temps réel</div>
+                    <div style="background: var(--bg-tertiary); border: 1px solid var(--border-light); border-radius: var(--radius-md); padding: 1.2rem; text-align: center;">
+                        <div style="font-size: 1.8rem; margin-bottom: 0.5rem;">📊</div>
+                        <div style="color: var(--primary-orange); font-weight: 600; margin-bottom: 0.3rem;">Analytics</div>
+                        <div style="color: var(--text-muted); font-size: 0.85rem;">Métriques temps réel</div>
                     </div>
                 </div>
             </div>
         """, unsafe_allow_html=True)
 
-# SIDEBAR MODERNE
+# SIDEBAR ÉLÉGANTE
 with st.sidebar:
     st.markdown("""
-        <div style="text-align: center; padding: 1rem 0 2rem 0;">
-            <h3 style="color: var(--primary-orange); margin-bottom: 0.5rem;">📊 Analytics Pro</h3>
-            <p style="color: var(--text-secondary); font-size: 0.9rem;">Dashboard temps réel</p>
+        <div style="text-align: center; padding: 1rem 0 1.5rem 0; border-bottom: 1px solid var(--border-light);">
+            <h3 style="color: var(--primary-orange); margin-bottom: 0.3rem; font-weight: 600;">📊 Analytics</h3>
+            <p style="color: var(--text-muted); font-size: 0.9rem;">Métriques de performance</p>
         </div>
     """, unsafe_allow_html=True)
     
@@ -1178,32 +1171,31 @@ with st.sidebar:
     
     if stats["total_requests"] > 0:
         st.markdown(f"""
-            <div style="background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 12px; padding: 1.5rem; margin-bottom: 1rem;">
-                <div style="color: var(--text-secondary); font-size: 0.9rem; margin-bottom: 1rem;">Statistiques globales</div>
+            <div style="background: var(--bg-tertiary); border: 1px solid var(--border-light); border-radius: var(--radius-md); padding: 1.2rem; margin: 1rem 0;">
+                <div style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 0.5rem;">Requêtes totales</div>
                 <div style="color: var(--primary-orange); font-size: 1.5rem; font-weight: 700;">{stats['total_requests']}</div>
-                <div style="color: var(--text-secondary); font-size: 0.8rem;">Requêtes totales</div>
             </div>
         """, unsafe_allow_html=True)
         
         success_rate = (stats["successful_requests"] / max(stats["total_requests"], 1)) * 100
         st.markdown(f"""
-            <div style="background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 12px; padding: 1.5rem; margin-bottom: 1rem;">
+            <div style="background: var(--bg-tertiary); border: 1px solid var(--border-light); border-radius: var(--radius-md); padding: 1.2rem; margin: 1rem 0;">
+                <div style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 0.5rem;">Taux de succès</div>
                 <div style="color: var(--primary-orange); font-size: 1.5rem; font-weight: 700;">{success_rate:.1f}%</div>
-                <div style="color: var(--text-secondary); font-size: 0.8rem;">Taux de succès</div>
             </div>
         """, unsafe_allow_html=True)
         
         total_cost = sum([day_data.get("cost", 0) for day_data in stats["daily_usage"].values()])
         st.markdown(f"""
-            <div style="background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 12px; padding: 1.5rem; margin-bottom: 1rem;">
+            <div style="background: var(--bg-tertiary); border: 1px solid var(--border-light); border-radius: var(--radius-md); padding: 1.2rem; margin: 1rem 0;">
+                <div style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 0.5rem;">Coût estimé</div>
                 <div style="color: var(--primary-orange); font-size: 1.5rem; font-weight: 700;">${total_cost:.3f}</div>
-                <div style="color: var(--text-secondary); font-size: 0.8rem;">Coût estimé total</div>
             </div>
         """, unsafe_allow_html=True)
         
         # Graphique évolution
         if len(stats["daily_usage"]) > 1:
-            st.markdown("**📈 Évolution (7 jours)**")
+            st.markdown("**📈 Évolution (7 derniers jours)**")
             last_days = dict(sorted(stats["daily_usage"].items())[-7:])
             chart_df = pd.DataFrame([
                 {"Date": date_str, "Requêtes": data["requests"]}
@@ -1211,11 +1203,15 @@ with st.sidebar:
             ])
             st.line_chart(chart_df.set_index("Date"), use_container_width=True)
     else:
-        st.info("🔄 Lancez votre première génération pour voir les analytics")
+        st.markdown("""
+            <div style="background: var(--bg-tertiary); border: 1px solid var(--border-light); border-radius: var(--radius-md); padding: 1.2rem; margin: 1rem 0; text-align: center;">
+                <div style="color: var(--text-muted); font-size: 0.9rem;">Lancez votre première génération pour voir les métriques</div>
+            </div>
+        """, unsafe_allow_html=True)
     
-    # Reset button moderne
+    # Reset button
     if st.button("🗑️ Reset Analytics", use_container_width=True):
         if os.path.exists(STATS_FILE):
             os.remove(STATS_FILE)
-            st.success("✅ Analytics réinitialisées !")
+            st.success("✅ Analytics réinitialisées")
             st.rerun()
