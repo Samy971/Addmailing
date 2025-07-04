@@ -1,5 +1,5 @@
 # email_generator_ui.py
-# Version complète avec thème noir et orange - Fonctionnalité inchangée
+# Version ultra-moderne - Design maximum avec Streamlit
 
 import streamlit as st
 import pandas as pd
@@ -15,244 +15,506 @@ TEMP_FILE = "generation_temp.csv"
 PROMPT_HISTORY_FILE = "prompt_history.json"
 STATS_FILE = "usage_stats.json"
 
-# STYLES - THÈME NOIR ET ORANGE
-st.set_page_config(page_title="Générateur d'emails Silviomotion", layout="wide")
+# STYLES ULTRA-MODERNES
+st.set_page_config(page_title="Silviomotion AI", layout="wide", initial_sidebar_state="collapsed")
 st.markdown("""
     <style>
-    /* Configuration globale */
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+    
+    /* RESET ET BASE */
+    * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+    }
+    
+    html, body, [class*="css"] {
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+        background: #0a0a0a;
+        color: #ffffff;
+    }
+    
+    /* VARIABLES CSS */
+    :root {
+        --primary-orange: #ff6b35;
+        --secondary-orange: #ff8c42;
+        --accent-orange: #ff4500;
+        --dark-bg: #0a0a0a;
+        --card-bg: rgba(20, 20, 20, 0.8);
+        --glass-bg: rgba(255, 255, 255, 0.05);
+        --border-color: rgba(255, 107, 53, 0.3);
+        --text-primary: #ffffff;
+        --text-secondary: #b0b0b0;
+        --shadow-primary: 0 8px 32px rgba(255, 107, 53, 0.2);
+        --shadow-secondary: 0 4px 16px rgba(0, 0, 0, 0.4);
+        --gradient-primary: linear-gradient(135deg, #ff6b35 0%, #ff8c42 100%);
+        --gradient-glass: linear-gradient(135deg, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0.05) 100%);
+        --border-radius: 16px;
+        --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    
+    /* CONTENEUR PRINCIPAL */
     .main {
-        background-color: #0e0e0e;
-        color: #ffffff;
+        background: radial-gradient(ellipse at top, rgba(255, 107, 53, 0.1) 0%, transparent 70%),
+                    linear-gradient(180deg, #0a0a0a 0%, #121212 100%);
+        min-height: 100vh;
+        padding: 0;
     }
     
-    /* Titre principal */
-    .title {
-        font-size: 42px; 
-        font-weight: bold; 
-        color: #ff6b35;
+    .block-container {
+        padding: 2rem 1rem;
+        max-width: 1400px;
+    }
+    
+    /* HEADER MODERNE */
+    .modern-header {
         text-align: center;
-        margin-bottom: 30px;
-        text-shadow: 2px 2px 4px rgba(255, 107, 53, 0.3);
+        padding: 3rem 0 4rem 0;
+        position: relative;
+        overflow: hidden;
     }
     
-    /* Sections */
-    .section {
-        font-size: 24px; 
-        color: #ff8c42; 
-        margin-top: 30px;
-        margin-bottom: 15px;
-        font-weight: 600;
-        border-bottom: 2px solid #ff6b35;
-        padding-bottom: 5px;
+    .header-title {
+        font-size: clamp(2.5rem, 5vw, 4rem);
+        font-weight: 800;
+        background: var(--gradient-primary);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        margin-bottom: 1rem;
+        letter-spacing: -0.02em;
+        position: relative;
     }
     
-    /* Texte secondaire */
-    .sub {
-        color: #cccccc; 
-        font-size: 14px; 
-        margin-bottom: 10px;
+    .header-subtitle {
+        font-size: 1.25rem;
+        color: var(--text-secondary);
+        font-weight: 400;
+        max-width: 600px;
+        margin: 0 auto;
+        line-height: 1.6;
     }
     
-    /* Boîtes d'email */
-    .email-box {
-        background: linear-gradient(145deg, #1a1a1a, #2d2d2d);
-        border: 1px solid #ff6b35;
-        border-radius: 12px; 
-        padding: 20px; 
-        box-shadow: 0 4px 12px rgba(255, 107, 53, 0.2);
-        margin-bottom: 15px;
+    .header-bg {
+        position: absolute;
+        top: -50%;
+        left: -50%;
+        width: 200%;
+        height: 200%;
+        background: radial-gradient(circle, rgba(255, 107, 53, 0.1) 0%, transparent 70%);
+        animation: rotate 20s linear infinite;
+        z-index: -1;
     }
     
-    .email-subject {
-        font-weight: bold; 
-        color: #ff8c42;
-        font-size: 16px;
-        margin-bottom: 10px;
+    @keyframes rotate {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
     }
     
-    .email-message {
-        white-space: pre-line; 
-        color: #e0e0e0;
-        background-color: #262626;
-        padding: 12px;
-        border-radius: 8px;
-        border-left: 4px solid #ff6b35;
+    /* CARTES GLASS MORPHISM */
+    .glass-card {
+        background: var(--glass-bg);
+        backdrop-filter: blur(16px) saturate(180%);
+        border: 1px solid var(--border-color);
+        border-radius: var(--border-radius);
+        box-shadow: var(--shadow-primary), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+        padding: 2rem;
+        margin-bottom: 2rem;
+        transition: var(--transition);
+        position: relative;
+        overflow: hidden;
     }
     
-    /* Personnalisation des éléments Streamlit */
-    .stSelectbox > div > div {
-        background-color: #2d2d2d;
-        color: #ffffff;
-        border: 1px solid #ff6b35;
+    .glass-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 1px;
+        background: var(--gradient-primary);
+        opacity: 0.6;
     }
     
-    .stTextInput > div > div > input {
-        background-color: #2d2d2d;
-        color: #ffffff;
-        border: 1px solid #ff6b35;
+    .glass-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 12px 40px rgba(255, 107, 53, 0.3), var(--shadow-secondary);
+        border-color: var(--primary-orange);
     }
     
-    .stTextArea > div > div > textarea {
-        background-color: #2d2d2d;
-        color: #ffffff;
-        border: 1px solid #ff6b35;
+    /* SECTIONS MODERNES */
+    .section-title {
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: var(--primary-orange);
+        margin-bottom: 1.5rem;
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        position: relative;
     }
     
+    .section-title::after {
+        content: '';
+        flex: 1;
+        height: 2px;
+        background: linear-gradient(90deg, var(--primary-orange) 0%, transparent 100%);
+    }
+    
+    /* MÉTRIQUES MODERNES */
+    .metrics-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1.5rem;
+        margin-bottom: 2rem;
+    }
+    
+    .metric-card {
+        background: var(--card-bg);
+        border: 1px solid var(--border-color);
+        border-radius: 12px;
+        padding: 1.5rem;
+        text-align: center;
+        position: relative;
+        overflow: hidden;
+        transition: var(--transition);
+    }
+    
+    .metric-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 3px;
+        background: var(--gradient-primary);
+    }
+    
+    .metric-card:hover {
+        transform: translateY(-2px);
+        border-color: var(--primary-orange);
+    }
+    
+    .metric-value {
+        font-size: 2rem;
+        font-weight: 800;
+        color: var(--primary-orange);
+        margin-bottom: 0.5rem;
+    }
+    
+    .metric-label {
+        font-size: 0.875rem;
+        color: var(--text-secondary);
+        font-weight: 500;
+    }
+    
+    /* INPUTS MODERNES */
+    .stTextInput > div > div > input,
+    .stTextArea > div > div > textarea,
+    .stSelectbox > div > div > div {
+        background: rgba(20, 20, 20, 0.8) !important;
+        border: 1px solid var(--border-color) !important;
+        border-radius: 12px !important;
+        color: var(--text-primary) !important;
+        font-family: 'Inter', sans-serif !important;
+        font-size: 14px !important;
+        transition: var(--transition) !important;
+        padding: 12px 16px !important;
+    }
+    
+    .stTextInput > div > div > input:focus,
+    .stTextArea > div > div > textarea:focus {
+        border-color: var(--primary-orange) !important;
+        box-shadow: 0 0 0 3px rgba(255, 107, 53, 0.1) !important;
+        outline: none !important;
+    }
+    
+    /* BOUTONS ULTRA-MODERNES */
     .stButton > button {
-        background: linear-gradient(145deg, #ff6b35, #ff8c42);
-        color: #ffffff;
-        border: none;
-        border-radius: 8px;
-        font-weight: 600;
-        transition: all 0.3s ease;
+        background: var(--gradient-primary) !important;
+        border: none !important;
+        border-radius: 12px !important;
+        color: white !important;
+        font-family: 'Inter', sans-serif !important;
+        font-weight: 600 !important;
+        padding: 12px 24px !important;
+        transition: var(--transition) !important;
+        position: relative !important;
+        overflow: hidden !important;
+        font-size: 14px !important;
+    }
+    
+    .stButton > button::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: -100%;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+        transition: left 0.5s;
     }
     
     .stButton > button:hover {
-        background: linear-gradient(145deg, #ff8c42, #ff6b35);
-        transform: translateY(-2px);
-        box-shadow: 0 4px 12px rgba(255, 107, 53, 0.4);
+        transform: translateY(-2px) !important;
+        box-shadow: 0 8px 32px rgba(255, 107, 53, 0.4) !important;
     }
     
-    /* Bouton principal */
+    .stButton > button:hover::before {
+        left: 100%;
+    }
+    
+    /* BOUTON PRINCIPAL */
     .stButton > button[kind="primary"] {
-        background: linear-gradient(145deg, #ff4500, #ff6b35);
-        font-size: 16px;
-        padding: 12px 24px;
-        box-shadow: 0 6px 20px rgba(255, 107, 53, 0.4);
+        background: linear-gradient(135deg, var(--accent-orange) 0%, var(--primary-orange) 100%) !important;
+        font-size: 16px !important;
+        padding: 16px 32px !important;
+        box-shadow: var(--shadow-primary) !important;
+        font-weight: 700 !important;
     }
     
-    /* Métriques */
-    .metric-card {
-        background: linear-gradient(145deg, #1a1a1a, #2d2d2d);
-        border: 1px solid #ff6b35;
-        border-radius: 10px;
-        padding: 15px;
-        text-align: center;
-        box-shadow: 0 2px 8px rgba(255, 107, 53, 0.2);
+    /* PROGRESS BAR */
+    .stProgress > div > div > div > div {
+        background: var(--gradient-primary) !important;
+        border-radius: 8px !important;
+        height: 8px !important;
     }
     
-    /* Messages d'état */
-    .stSuccess {
-        background-color: #2d4a2d;
-        color: #90ee90;
-        border: 1px solid #4caf50;
+    .stProgress > div > div > div {
+        background: rgba(255, 255, 255, 0.1) !important;
+        border-radius: 8px !important;
     }
     
-    .stError {
-        background-color: #4d2d2d;
-        color: #ffcccb;
-        border: 1px solid #f44336;
+    /* SIDEBAR MODERNE */
+    .css-1d391kg {
+        background: linear-gradient(180deg, rgba(10, 10, 10, 0.95) 0%, rgba(20, 20, 20, 0.95) 100%) !important;
+        backdrop-filter: blur(16px) !important;
+        border-right: 1px solid var(--border-color) !important;
     }
     
-    .stWarning {
-        background-color: #4d3d2d;
-        color: #ffd700;
-        border: 1px solid #ff9800;
-    }
-    
-    .stInfo {
-        background-color: #2d3d4d;
-        color: #87ceeb;
-        border: 1px solid #2196f3;
-    }
-    
-    /* Graphiques */
-    .stPlotlyChart {
-        background-color: #1a1a1a;
-    }
-    
-    /* Expander */
+    /* EXPANDER MODERNE */
     .streamlit-expanderHeader {
-        background-color: #2d2d2d;
-        color: #ff8c42;
-        border: 1px solid #ff6b35;
+        background: var(--card-bg) !important;
+        border: 1px solid var(--border-color) !important;
+        border-radius: 12px !important;
+        color: var(--primary-orange) !important;
+        font-weight: 600 !important;
+        transition: var(--transition) !important;
+    }
+    
+    .streamlit-expanderHeader:hover {
+        border-color: var(--primary-orange) !important;
+        background: rgba(255, 107, 53, 0.1) !important;
     }
     
     .streamlit-expanderContent {
-        background-color: #1a1a1a;
-        border: 1px solid #ff6b35;
+        background: var(--card-bg) !important;
+        border: 1px solid var(--border-color) !important;
+        border-top: none !important;
+        border-radius: 0 0 12px 12px !important;
+        padding: 1.5rem !important;
     }
     
-    /* Barre de progression */
-    .stProgress > div > div > div > div {
-        background: linear-gradient(90deg, #ff6b35, #ff8c42);
+    /* EMAIL BOX ULTRA-MODERNE */
+    .email-card {
+        background: var(--glass-bg);
+        backdrop-filter: blur(16px);
+        border: 1px solid var(--border-color);
+        border-radius: 16px;
+        padding: 1.5rem;
+        margin-bottom: 1rem;
+        position: relative;
+        overflow: hidden;
+        transition: var(--transition);
     }
     
-    /* Sidebar */
-    .css-1d391kg {
-        background-color: #1a1a1a;
-        border-right: 2px solid #ff6b35;
+    .email-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 2px;
+        background: var(--gradient-primary);
     }
     
-    /* Checkbox */
-    .stCheckbox > label {
-        color: #ffffff;
+    .email-card:hover {
+        transform: translateX(4px);
+        border-color: var(--primary-orange);
     }
     
-    /* Slider */
-    .stSlider > div > div > div {
-        background-color: #ff6b35;
+    .email-subject {
+        font-size: 1.1rem;
+        font-weight: 700;
+        color: var(--secondary-orange);
+        margin-bottom: 1rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
     }
     
-    /* Upload */
-    .stFileUploader > div {
-        background-color: #2d2d2d;
-        border: 2px dashed #ff6b35;
+    .email-body {
+        color: var(--text-secondary);
+        line-height: 1.6;
+        background: rgba(0, 0, 0, 0.3);
+        padding: 1rem;
         border-radius: 8px;
+        border-left: 3px solid var(--primary-orange);
+        font-size: 14px;
     }
     
-    /* Tabs */
-    .stTabs [data-baseweb="tab-list"] {
-        background-color: #2d2d2d;
+    /* NOTIFICATIONS MODERNES */
+    .stSuccess, .stError, .stWarning, .stInfo {
+        border-radius: 12px !important;
+        border: none !important;
+        backdrop-filter: blur(16px) !important;
+        font-family: 'Inter', sans-serif !important;
     }
     
-    .stTabs [data-baseweb="tab"] {
-        color: #ff8c42;
+    .stSuccess {
+        background: rgba(34, 197, 94, 0.1) !important;
+        border-left: 4px solid #22c55e !important;
+        color: #22c55e !important;
     }
     
-    .stTabs [aria-selected="true"] {
-        background-color: #ff6b35;
-        color: #ffffff;
+    .stError {
+        background: rgba(239, 68, 68, 0.1) !important;
+        border-left: 4px solid #ef4444 !important;
+        color: #ef4444 !important;
     }
     
-    /* Colonnes */
-    .css-1r6slb0 {
-        background-color: #0e0e0e;
+    .stWarning {
+        background: rgba(251, 191, 36, 0.1) !important;
+        border-left: 4px solid #fbbf24 !important;
+        color: #fbbf24 !important;
     }
     
-    /* Amélioration de la lisibilité */
-    .stMarkdown {
-        color: #e0e0e0;
+    .stInfo {
+        background: rgba(59, 130, 246, 0.1) !important;
+        border-left: 4px solid #3b82f6 !important;
+        color: #3b82f6 !important;
     }
     
-    h1, h2, h3, h4, h5, h6 {
-        color: #ff8c42;
+    /* UPLOAD ZONE MODERNE */
+    .stFileUploader > div {
+        background: var(--glass-bg) !important;
+        border: 2px dashed var(--border-color) !important;
+        border-radius: 16px !important;
+        transition: var(--transition) !important;
+        padding: 2rem !important;
     }
     
-    /* Style pour les codes */
-    code {
-        background-color: #2d2d2d;
-        color: #ff8c42;
-        padding: 2px 4px;
+    .stFileUploader > div:hover {
+        border-color: var(--primary-orange) !important;
+        background: rgba(255, 107, 53, 0.05) !important;
+    }
+    
+    /* CHECKBOX MODERNE */
+    .stCheckbox > label {
+        color: var(--text-primary) !important;
+        font-family: 'Inter', sans-serif !important;
+        font-weight: 500 !important;
+    }
+    
+    /* SLIDER MODERNE */
+    .stSlider > div > div > div > div {
+        background: var(--primary-orange) !important;
+    }
+    
+    .stSlider > div > div > div {
+        background: rgba(255, 255, 255, 0.1) !important;
+    }
+    
+    /* HIDE STREAMLIT BRANDING */
+    #MainMenu {visibility: hidden;}
+    footer {visibility: hidden;}
+    header {visibility: hidden;}
+    .stDeployButton {display: none;}
+    
+    /* CUSTOM SCROLLBAR */
+    ::-webkit-scrollbar {
+        width: 8px;
+    }
+    
+    ::-webkit-scrollbar-track {
+        background: rgba(255, 255, 255, 0.1);
+    }
+    
+    ::-webkit-scrollbar-thumb {
+        background: var(--gradient-primary);
         border-radius: 4px;
     }
     
-    /* Animation pour les boutons */
+    ::-webkit-scrollbar-thumb:hover {
+        background: var(--secondary-orange);
+    }
+    
+    /* RESPONSIVE */
+    @media (max-width: 768px) {
+        .block-container {
+            padding: 1rem 0.5rem;
+        }
+        
+        .glass-card {
+            padding: 1.5rem;
+        }
+        
+        .header-title {
+            font-size: 2.5rem;
+        }
+    }
+    
+    /* ANIMATIONS */
+    @keyframes fadeInUp {
+        from {
+            opacity: 0;
+            transform: translateY(30px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+    
+    .animate-fadeInUp {
+        animation: fadeInUp 0.6s ease-out;
+    }
+    
     @keyframes pulse {
-        0% { box-shadow: 0 0 0 0 rgba(255, 107, 53, 0.7); }
-        70% { box-shadow: 0 0 0 10px rgba(255, 107, 53, 0); }
-        100% { box-shadow: 0 0 0 0 rgba(255, 107, 53, 0); }
+        0%, 100% {
+            transform: scale(1);
+        }
+        50% {
+            transform: scale(1.05);
+        }
     }
     
     .pulse-animation {
         animation: pulse 2s infinite;
     }
+    
+    /* LOADING SPINNER */
+    @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+    
+    .loading-spinner {
+        animation: spin 1s linear infinite;
+    }
     </style>
 """, unsafe_allow_html=True)
 
-st.markdown("<div class=\"title\">🎥 Silviomotion - Générateur d'emails personnalisés</div>", unsafe_allow_html=True)
+# HEADER ULTRA-MODERNE
+st.markdown("""
+    <div class="modern-header">
+        <div class="header-bg"></div>
+        <h1 class="header-title">🎥 Silviomotion AI</h1>
+        <p class="header-subtitle">Générateur d'emails ultra-personnalisés powered by Claude AI</p>
+    </div>
+""", unsafe_allow_html=True)
 
-col_params, col_output = st.columns([1, 2])
+col_params, col_output = st.columns([1, 2], gap="large")
 
 # Initialisation des variables de session
 if 'api_validated' not in st.session_state:
@@ -337,25 +599,30 @@ def get_display_name(df, index):
         return f"{first_name} {last_name}".strip() or f"Prospect {index + 1}"
 
 with col_params:
-    st.markdown('<div class="section">🔑 Entrez votre clé API Anthropic</div>', unsafe_allow_html=True)
+    st.markdown('<div class="glass-card animate-fadeInUp">', unsafe_allow_html=True)
+    st.markdown('<div class="section-title">🔑 Configuration API</div>', unsafe_allow_html=True)
+    
     show_key = st.checkbox("Afficher la clé API", value=False)
-    api_key_input = st.text_input("Clé API", type="default" if show_key else "password")
+    api_key_input = st.text_input("Clé API Anthropic", type="default" if show_key else "password", placeholder="sk-ant-...")
     
     if api_key_input and not st.session_state.api_validated:
-        try:
-            client = anthropic.Anthropic(api_key=api_key_input)
-            # Test simple avec le modèle le moins cher
-            test_response = client.messages.create(
-                model="claude-3-haiku-20240307", 
-                max_tokens=10, 
-                messages=[{"role": "user", "content": "Test"}]
-            )
-            st.session_state.client = client
-            st.session_state.api_validated = True
-            st.success("✅ Clé API validée avec succès !")
-        except Exception as e:
-            st.error(f"❌ Clé API invalide ou erreur : {e}")
-            st.session_state.api_validated = False
+        with st.spinner("Validation de la clé API..."):
+            try:
+                client = anthropic.Anthropic(api_key=api_key_input)
+                # Test simple avec le modèle le moins cher
+                test_response = client.messages.create(
+                    model="claude-3-haiku-20240307", 
+                    max_tokens=10, 
+                    messages=[{"role": "user", "content": "Test"}]
+                )
+                st.session_state.client = client
+                st.session_state.api_validated = True
+                st.success("✅ Clé API validée avec succès !")
+            except Exception as e:
+                st.error(f"❌ Clé API invalide : {str(e)[:100]}...")
+                st.session_state.api_validated = False
+    
+    st.markdown('</div>', unsafe_allow_html=True)
     
     if not api_key_input:
         st.warning("⚠️ Veuillez entrer votre clé API Anthropic pour continuer.")
@@ -369,18 +636,38 @@ start_idx = 0
 result_df = None
 
 with col_params:
-    st.markdown('<div class="section">📊 Statistiques d\'utilisation</div>', unsafe_allow_html=True)
+    st.markdown('<div class="glass-card">', unsafe_allow_html=True)
+    st.markdown('<div class="section-title">📊 Dashboard Analytics</div>', unsafe_allow_html=True)
+    
     stats = load_stats()
     
+    # Métriques modernes
     col_stat1, col_stat2, col_stat3 = st.columns(3)
     with col_stat1:
-        st.metric("Total requêtes", stats["total_requests"])
+        st.markdown(f"""
+            <div class="metric-card">
+                <div class="metric-value">{stats["total_requests"]}</div>
+                <div class="metric-label">Total Requêtes</div>
+            </div>
+        """, unsafe_allow_html=True)
+    
     with col_stat2:
         success_rate = (stats["successful_requests"] / max(stats["total_requests"], 1)) * 100
-        st.metric("Taux de succès", f"{success_rate:.1f}%")
+        st.markdown(f"""
+            <div class="metric-card">
+                <div class="metric-value">{success_rate:.1f}%</div>
+                <div class="metric-label">Taux de Succès</div>
+            </div>
+        """, unsafe_allow_html=True)
+    
     with col_stat3:
         today_usage = stats["daily_usage"].get(date.today().isoformat(), {"requests": 0})
-        st.metric("Aujourd'hui", f"{today_usage['requests']}/{QUOTA_DAILY_REQ}")
+        st.markdown(f"""
+            <div class="metric-card">
+                <div class="metric-value">{today_usage['requests']}</div>
+                <div class="metric-label">Aujourd'hui</div>
+            </div>
+        """, unsafe_allow_html=True)
     
     # Graphique des 7 derniers jours
     if len(stats["daily_usage"]) > 0:
@@ -390,11 +677,21 @@ with col_params:
             requests = [item[1]["requests"] for item in last_7_days]
             
             chart_data = pd.DataFrame({"Date": dates, "Requêtes": requests})
-            st.bar_chart(chart_data.set_index("Date"))
+            st.bar_chart(chart_data.set_index("Date"), use_container_width=True)
+    
+    st.markdown('</div>', unsafe_allow_html=True)
 
 with col_params:
-    st.markdown('<div class="section">📁 Déposez le fichier CSV Sales Navigator</div>', unsafe_allow_html=True)
-    uploaded_file = st.file_uploader("Fichier CSV", type="csv")
+    st.markdown('<div class="glass-card">', unsafe_allow_html=True)
+    st.markdown('<div class="section-title">📁 Import de Données</div>', unsafe_allow_html=True)
+    
+    uploaded_file = st.file_uploader(
+        "Déposez votre fichier CSV Sales Navigator", 
+        type="csv",
+        help="Format supporté: CSV avec séparateur ; ou ,"
+    )
+    
+    st.markdown('</div>', unsafe_allow_html=True)
 
 df = None
 if uploaded_file:
@@ -410,7 +707,7 @@ if uploaded_file:
             uploaded_file.seek(0)  # Remettre le curseur au début
             df = pd.read_csv(uploaded_file, sep=",")
         
-        st.success(f"✅ Fichier chargé avec succès ! {len(df)} lignes trouvées.")
+        st.success(f"✅ Fichier chargé avec succès ! **{len(df)}** prospects trouvés.")
         
     except Exception as e:
         st.error(f"❌ Erreur lors de la lecture du fichier : {e}")
@@ -419,9 +716,12 @@ if uploaded_file:
     # Gestion de la reprise de session
     if os.path.exists(TEMP_FILE):
         with col_params:
+            st.markdown('<div class="glass-card">', unsafe_allow_html=True)
+            st.markdown('<div class="section-title">🔄 Reprise de Session</div>', unsafe_allow_html=True)
+            
             col1, col2 = st.columns(2)
             with col1:
-                if st.button("🔁 Reprendre session"):
+                if st.button("🔁 Reprendre", use_container_width=True):
                     try:
                         result_df = pd.read_csv(TEMP_FILE, sep=";")
                         start_idx = len(result_df)
@@ -435,7 +735,7 @@ if uploaded_file:
                         st.error(f"❌ Erreur pendant la reprise : {e}")
                         
             with col2:
-                if st.button("❌ Nouvelle session"):
+                if st.button("🆕 Nouveau", use_container_width=True):
                     try:
                         os.remove(TEMP_FILE)
                         result_df = None
@@ -444,21 +744,34 @@ if uploaded_file:
                         st.rerun()
                     except Exception as e:
                         st.warning(f"Attention : {e}")
+            
+            st.markdown('</div>', unsafe_allow_html=True)
 
 with col_params:
-    st.markdown('<div class="section">⚙️ Paramètres du modèle</div>', unsafe_allow_html=True)
-    model_choice = st.selectbox("Modèle :", [
+    st.markdown('<div class="glass-card">', unsafe_allow_html=True)
+    st.markdown('<div class="section-title">⚙️ Configuration IA</div>', unsafe_allow_html=True)
+    
+    model_choice = st.selectbox("Modèle Claude :", [
         "claude-3-5-sonnet-20241022",
         "claude-3-5-sonnet-20240620",
         "claude-3-haiku-20240307"
     ])
-    temperature = st.slider("Température", 0.0, 1.0, 0.7, 0.1)
-    max_tokens = st.selectbox("max_tokens", [500, 1000, 1500, 2000, 3000], index=2)
+    
+    col_temp, col_tokens = st.columns(2)
+    with col_temp:
+        temperature = st.slider("Créativité", 0.0, 1.0, 0.7, 0.1)
+    with col_tokens:
+        max_tokens = st.selectbox("Longueur", [500, 1000, 1500, 2000, 3000], index=2)
+    
+    st.markdown('</div>', unsafe_allow_html=True)
 
-    st.markdown('<div class="section">✍️ Prompt personnalisable</div>', unsafe_allow_html=True)
+with col_params:
+    st.markdown('<div class="glass-card">', unsafe_allow_html=True)
+    st.markdown('<div class="section-title">✍️ Prompt Engineering</div>', unsafe_allow_html=True)
+    
     prompt_history = load_prompt_history()
     prompt_names = list(prompt_history.keys())
-    selected_prompt = st.selectbox("📚 Choisir un prompt enregistré :", ["Nouveau prompt"] + prompt_names)
+    selected_prompt = st.selectbox("📚 Templates sauvegardés :", ["Nouveau prompt"] + prompt_names)
 
     default_prompt = """Tu es un expert en prospection commerciale pour Silviomotion, une agence de production vidéo.
 
@@ -487,35 +800,39 @@ Commence ta réponse directement par [ et termine par ]"""
         default_prompt = prompt_history[selected_prompt]
 
     prompt = st.text_area(
-        "✍️ Éditez le prompt (utilisez {{PROSPECT_INFO}} pour insérer les données)", 
+        "Prompt personnalisé", 
         value=default_prompt, 
-        height=300,
-        help="Le placeholder {{PROSPECT_INFO}} sera remplacé par les données du prospect"
+        height=250,
+        help="Utilisez {{PROSPECT_INFO}} pour insérer automatiquement les données du prospect",
+        placeholder="Votre prompt d'instruction pour Claude..."
     )
 
-    # Sauvegarde de prompt
+    # Sauvegarde de prompt avec design moderne
     col1, col2 = st.columns([3, 1])
     with col1:
-        new_prompt_name = st.text_input("💾 Nom du nouveau prompt à enregistrer")
+        new_prompt_name = st.text_input("💾 Nom du template", placeholder="Ex: Prompt Vidéo B2B")
     with col2:
-        if st.button("💾 Enregistrer") and new_prompt_name.strip():
+        if st.button("💾 Save", use_container_width=True) and new_prompt_name.strip():
             if save_prompt_history(new_prompt_name.strip(), prompt):
-                st.success(f"✅ Prompt « {new_prompt_name.strip()} » enregistré.")
+                st.success(f"✅ Template sauvegardé !")
                 time.sleep(1)
                 st.rerun()
+    
+    st.markdown('</div>', unsafe_allow_html=True)
 
-    # PRÉVISUALISATION EN DIRECT
-    st.markdown('<div class="section">🔍 Prévisualisation</div>', unsafe_allow_html=True)
+with col_params:
+    st.markdown('<div class="glass-card">', unsafe_allow_html=True)
+    st.markdown('<div class="section-title">🔍 Live Preview</div>', unsafe_allow_html=True)
     
     if df is not None and prompt:
         preview_idx = st.selectbox(
-            "Choisir un prospect pour la prévisualisation :",
+            "Prospect pour l'aperçu :",
             range(len(df)),
             format_func=lambda x: get_display_name(df, x)
         )
         
-        if st.button("👁️ Générer aperçu", help="Génère un email de test pour voir le rendu"):
-            with st.spinner("Génération de l'aperçu..."):
+        if st.button("👁️ Générer Aperçu", use_container_width=True, help="Test gratuit de votre prompt"):
+            with st.spinner("🤖 Claude génère votre aperçu..."):
                 try:
                     row = df.iloc[preview_idx]
                     content_parts = []
@@ -526,23 +843,17 @@ Commence ta réponse directement par [ et termine par ]"""
                     content = "\n".join(content_parts)
                     final_prompt = prompt.replace("{{PROSPECT_INFO}}", content)
                     
-                    # Générer un seul email pour l'aperçu (économie d'API)
-                    preview_prompt = final_prompt.replace(
-                        "Répondez UNIQUEMENT au format JSON suivant :\n[", 
-                        "Répondez UNIQUEMENT au format JSON suivant :\n["
-                    ).replace("Message 4\"}", "Message 1\"}]")
-                    
-                    # Prompt modifié pour un seul email
+                    # Prompt modifié pour un seul email (économie)
                     single_email_prompt = final_prompt.replace(
-                        "générez 4 emails", "générez 1 email"
+                        "4 emails", "1 email"
                     ).replace(
-                        '[\n  {"subject": "Objet 1", "message": "Message 1"},\n  {"subject": "Objet 2", "message": "Message 2"},\n  {"subject": "Objet 3", "message": "Message 3"},\n  {"subject": "Objet 4", "message": "Message 4"}\n]',
+                        '[\n{"subject": "Objet 1", "message": "Message 1"},\n{"subject": "Objet 2", "message": "Message 2"},\n{"subject": "Objet 3", "message": "Message 3"},\n{"subject": "Objet 4", "message": "Message 4"}\n]',
                         '[{"subject": "Objet", "message": "Message"}]'
                     )
                     
                     response = st.session_state.client.messages.create(
                         model=model_choice,
-                        max_tokens=max_tokens//2,  # Moins de tokens pour la preview
+                        max_tokens=max_tokens//2,
                         temperature=temperature,
                         messages=[{"role": "user", "content": single_email_prompt}]
                     )
@@ -560,288 +871,351 @@ Commence ta réponse directement par [ et termine par ]"""
                         "email": preview_email
                     }
                     
-                    # Mettre à jour les stats
                     update_stats(success=True, cost_estimate=0.001)
                     
                 except Exception as e:
-                    st.error(f"❌ Erreur prévisualisation : {e}")
+                    st.error(f"❌ Erreur preview : {str(e)[:100]}...")
                     update_stats(success=False)
         
-        # Affichage de la prévisualisation
+        # Affichage preview moderne
         if st.session_state.preview_data:
-            with st.expander(f"📧 Aperçu pour {st.session_state.preview_data['prospect']}", expanded=True):
-                email_data = st.session_state.preview_data['email']
-                st.markdown(f"<div class='email-subject'>📧 Objet : {email_data.get('subject', 'N/A')}</div>", unsafe_allow_html=True)
-                st.text_area(
-                    "Message :", 
-                    value=email_data.get('message', 'N/A'), 
-                    height=200,
-                    disabled=True,
-                    key="preview_message"
-                )
+            st.markdown("---")
+            email_data = st.session_state.preview_data['email']
+            
+            st.markdown(f"""
+                <div class="email-card">
+                    <div class="email-subject">
+                        📧 {email_data.get('subject', 'N/A')}
+                    </div>
+                    <div class="email-body">
+                        {email_data.get('message', 'N/A').replace(chr(10), '<br>')}
+                    </div>
+                </div>
+            """, unsafe_allow_html=True)
+    
+    st.markdown('</div>', unsafe_allow_html=True)
+
+# GÉNÉRATION PRINCIPALE
+with col_params:
+    if df is not None and prompt:
+        st.markdown('<div class="glass-card">', unsafe_allow_html=True)
+        
+        if not st.session_state.generating:
+            if st.button("🚀 LANCER LA GÉNÉRATION", type="primary", use_container_width=True):
+                st.session_state.generating = True
+                st.rerun()
+        else:
+            st.info("🔄 Génération en cours...")
+        
+        st.markdown('</div>', unsafe_allow_html=True)
 
 # Zone d'affichage des résultats
 placeholder_output = col_output.empty()
 
-# Génération des emails
-with col_params:
-    if df is not None and prompt and st.button("🚀 Générer les emails", type="primary") and not st.session_state.generating:
-        st.session_state.generating = True
-        try:
-            if result_df is None:
-                result_df = df.iloc[:start_idx].copy() if start_idx > 0 else pd.DataFrame()
+# PROCESSUS DE GÉNÉRATION
+if st.session_state.generating and df is not None and prompt:
+    try:
+        if result_df is None:
+            result_df = df.iloc[:start_idx].copy() if start_idx > 0 else pd.DataFrame()
 
-            total = len(df)
-            start_time = time.time()
+        total = len(df)
+        start_time = time.time()
 
-            with col_output:
-                progress_bar = st.progress(start_idx / total if total > 0 else 0)
-                status_text = st.empty()
-                display_area = st.empty()
-                req_used = start_idx
+        with col_output:
+            st.markdown('<div class="glass-card">', unsafe_allow_html=True)
+            st.markdown('<div class="section-title">🤖 Génération en Cours</div>', unsafe_allow_html=True)
+            
+            progress_bar = st.progress(start_idx / total if total > 0 else 0)
+            status_text = st.empty()
+            display_area = st.empty()
+            req_used = start_idx
 
-                for idx in range(start_idx, total):
-                    row = df.iloc[idx]
-                    full_name = get_display_name(df, idx)
+            for idx in range(start_idx, total):
+                row = df.iloc[idx]
+                full_name = get_display_name(df, idx)
 
-                    status_text.text(f"🔄 Traitement de {full_name} ({idx+1}/{total})")
+                status_text.markdown(f"**🔄 Processing:** {full_name} ({idx+1}/{total})")
 
-                    try:
-                        content_parts = [f"{col}: {row[col]}" for col in df.columns if pd.notna(row[col]) and str(row[col]).strip()]
-                        content = "\n".join(content_parts)
-                        final_prompt = prompt.replace("{{PROSPECT_INFO}}", content)
+                try:
+                    content_parts = [f"{col}: {row[col]}" for col in df.columns if pd.notna(row[col]) and str(row[col]).strip()]
+                    content = "\n".join(content_parts)
+                    final_prompt = prompt.replace("{{PROSPECT_INFO}}", content)
 
-                        # Appel API avec gestion d'erreur renforcée
-                        response = st.session_state.client.messages.create(
-                            model=model_choice,
-                            max_tokens=max_tokens,
-                            temperature=temperature,
-                            messages=[{"role": "user", "content": final_prompt}]
-                        )
-
-                        # Vérification robuste de la réponse
-                        if not response or not response.content or len(response.content) == 0:
-                            raise ValueError("Réponse vide de l'API Claude")
-                        
-                        response_text = response.content[0].text.strip()
-                        
-                        # Debug: afficher la réponse brute en cas de problème
-                        if not response_text:
-                            st.warning(f"Réponse vide pour {full_name}")
-                            raise ValueError("Réponse vide")
-                        
-                        # Nettoyage plus robuste de la réponse
-                        if response_text.startswith("```json"):
-                            response_text = response_text.replace("```json", "").replace("```", "").strip()
-                        elif response_text.startswith("```"):
-                            response_text = response_text.replace("```", "").strip()
-                        
-                        # Détection et conversion XML vers JSON si nécessaire
-                        if response_text.startswith("<") or "<email" in response_text:
-                            st.warning(f"Réponse XML détectée pour {full_name}, conversion en cours...")
-                            # Conversion basique XML vers JSON
-                            import re
-                            
-                            # Extraire les emails du XML
-                            email_pattern = r'<email\d*>.*?</email\d*>'
-                            emails = re.findall(email_pattern, response_text, re.DOTALL)
-                            
-                            email_json = []
-                            for i, email_xml in enumerate(emails[:4]):  # Limiter à 4 emails
-                                # Extraire subject et message
-                                subject_match = re.search(r'<subject[^>]*>(.*?)</subject[^>]*>', email_xml, re.DOTALL)
-                                message_match = re.search(r'<message[^>]*>(.*?)</message[^>]*>', email_xml, re.DOTALL)
-                                
-                                # Si pas de balises message, prendre tout le contenu après subject
-                                if not message_match:
-                                    content_after_subject = re.sub(r'<subject[^>]*>.*?</subject[^>]*>', '', email_xml, flags=re.DOTALL)
-                                    message_match = re.search(r'>(.*)', content_after_subject.strip(), re.DOTALL)
-                                
-                                subject = subject_match.group(1).strip() if subject_match else f"Email {i+1} pour {full_name}"
-                                message = message_match.group(1).strip() if message_match else "Contenu non disponible"
-                                
-                                # Nettoyer les balises HTML/XML restantes
-                                subject = re.sub(r'<[^>]+>', '', subject).strip()
-                                message = re.sub(r'<[^>]+>', '', message).strip()
-                                
-                                email_json.append({
-                                    "subject": subject,
-                                    "message": message
-                                })
-                            
-                            # Compléter si moins de 4 emails trouvés
-                            while len(email_json) < 4:
-                                email_json.append({
-                                    "subject": f"Email {len(email_json)+1} - {full_name}",
-                                    "message": "Email généré automatiquement suite à une conversion XML."
-                                })
-                                
-                        else:
-                            # Tentative de parsing JSON normal
-                            try:
-                                email_json = json.loads(response_text)
-                            except json.JSONDecodeError as json_err:
-                                st.error(f"Erreur JSON pour {full_name}. Réponse brute: {response_text[:200]}...")
-                                raise ValueError(f"Impossible de parser JSON: {json_err}")
-
-                        # Validation de la structure
-                        if not isinstance(email_json, list):
-                            raise ValueError(f"La réponse n'est pas une liste: {type(email_json)}")
-                        
-                        if len(email_json) != 4:
-                            st.warning(f"Nombre d'emails incorrect pour {full_name}: {len(email_json)} au lieu de 4")
-                            # Compléter avec des emails par défaut si nécessaire
-                            while len(email_json) < 4:
-                                email_json.append({
-                                    "subject": f"Email supplémentaire {len(email_json)+1} - {full_name}",
-                                    "message": "Email généré automatiquement suite à une réponse incomplète."
-                                })
-
-                        # Validation de chaque email
-                        for i, email in enumerate(email_json):
-                            if not isinstance(email, dict) or 'subject' not in email or 'message' not in email:
-                                email_json[i] = {
-                                    "subject": f"Email {i+1} - {full_name} (corrigé)",
-                                    "message": "Email corrigé automatiquement suite à une structure invalide."
-                                }
-
-                        estimated_cost = 0.003 if "sonnet" in model_choice else 0.001
-                        update_stats(success=True, cost_estimate=estimated_cost)
-
-                    except Exception as e:
-                        st.warning(f"Erreur pour {full_name} : {e}")
-                        # Emails de fallback en cas d'erreur
-                        email_json = [
-                            {
-                                "subject": f"Email {i+1} - {full_name} [ERREUR]", 
-                                "message": f"Une erreur s'est produite lors de la génération de cet email.\n\nErreur: {str(e)}\n\nVeuillez réessayer ou modifier le prompt."
-                            }
-                            for i in range(4)
-                        ]
-                        update_stats(success=False)
-
-                    # Ajout au DataFrame résultat
-                    new_row = row.to_dict()
-                    for i in range(4):
-                        new_row[f"email_{i+1}_subject"] = email_json[i]["subject"]
-                        new_row[f"email_{i+1}_message"] = email_json[i]["message"].replace("\\n", "\n")
-
-                    new_df = pd.DataFrame([new_row])
-                    result_df = pd.concat([result_df, new_df], ignore_index=True)
-
-                    try:
-                        result_df.to_csv(TEMP_FILE, sep=";", index=False)
-                    except Exception as e:
-                        st.warning(f"Erreur de sauvegarde temporaire : {e}")
-
-                    # Affichage unique dans zone réservée avec style amélioré
-                    with display_area.container():
-                        st.markdown(f"### 📧 Emails pour {full_name}")
-                        for i in range(4):
-                            with st.expander(f"Email {i+1}: {email_json[i]['subject']}", expanded=(i == 0)):
-                                st.markdown(f"<div class='email-box'><div class='email-subject'>📧 Objet: {email_json[i]['subject']}</div><div class='email-message'>{email_json[i]['message']}</div></div>", unsafe_allow_html=True)
-
-                    if idx % 10 == 9:
-                        try:
-                            with open(TEMP_FILE, "rb") as f:
-                                st.download_button(
-                                    "📅 Télécharger progression intermédiaire",
-                                    data=f.read(),
-                                    file_name=f"emails_progress_{idx+1}.csv",
-                                    mime="text/csv",
-                                    key=f"dl_{idx}"
-                                )
-                        except Exception as e:
-                            st.warning(f"Erreur bouton téléchargement : {e}")
-
-                    progress_bar.progress((idx + 1) / total)
-                    req_used += 1
-
-                    if req_used >= QUOTA_DAILY_REQ:
-                        st.warning(f"Quota atteint ({QUOTA_DAILY_REQ}), arrêt automatique.")
-                        break
-
-                    time.sleep(0.2)
-
-                # Finalisation
-                status_text.text("✅ Génération terminée !")
-                
-                # Téléchargement final
-                if result_df is not None and len(result_df) > 0:
-                    csv = result_df.to_csv(index=False, sep=";").encode("utf-8")
-                    st.download_button(
-                        "📥 Télécharger le fichier final complet",
-                        data=csv,
-                        file_name=f"emails_silviomotion_{date.today().strftime('%Y%m%d')}.csv",
-                        mime="text/csv"
+                    # Appel API
+                    response = st.session_state.client.messages.create(
+                        model=model_choice,
+                        max_tokens=max_tokens,
+                        temperature=temperature,
+                        messages=[{"role": "user", "content": final_prompt}]
                     )
+
+                    if not response or not response.content or len(response.content) == 0:
+                        raise ValueError("Réponse vide de l'API Claude")
                     
-                    # Nettoyer le fichier temporaire
+                    response_text = response.content[0].text.strip()
+                    
+                    if not response_text:
+                        raise ValueError("Réponse vide")
+                    
+                    # Nettoyage robuste
+                    if response_text.startswith("```json"):
+                        response_text = response_text.replace("```json", "").replace("```", "").strip()
+                    elif response_text.startswith("```"):
+                        response_text = response_text.replace("```", "").strip()
+                    
+                    # Gestion XML -> JSON si nécessaire
+                    if response_text.startswith("<") or "<email" in response_text:
+                        st.warning(f"Conversion XML pour {full_name}...")
+                        import re
+                        
+                        email_pattern = r'<email\d*>.*?</email\d*>'
+                        emails = re.findall(email_pattern, response_text, re.DOTALL)
+                        
+                        email_json = []
+                        for i, email_xml in enumerate(emails[:4]):
+                            subject_match = re.search(r'<subject[^>]*>(.*?)</subject[^>]*>', email_xml, re.DOTALL)
+                            message_match = re.search(r'<message[^>]*>(.*?)</message[^>]*>', email_xml, re.DOTALL)
+                            
+                            if not message_match:
+                                content_after_subject = re.sub(r'<subject[^>]*>.*?</subject[^>]*>', '', email_xml, flags=re.DOTALL)
+                                message_match = re.search(r'>(.*)', content_after_subject.strip(), re.DOTALL)
+                            
+                            subject = subject_match.group(1).strip() if subject_match else f"Email {i+1} pour {full_name}"
+                            message = message_match.group(1).strip() if message_match else "Contenu non disponible"
+                            
+                            subject = re.sub(r'<[^>]+>', '', subject).strip()
+                            message = re.sub(r'<[^>]+>', '', message).strip()
+                            
+                            email_json.append({"subject": subject, "message": message})
+                        
+                        while len(email_json) < 4:
+                            email_json.append({
+                                "subject": f"Email {len(email_json)+1} - {full_name}",
+                                "message": "Email généré automatiquement suite à une conversion XML."
+                            })
+                            
+                    else:
+                        try:
+                            email_json = json.loads(response_text)
+                        except json.JSONDecodeError as json_err:
+                            st.error(f"Erreur JSON pour {full_name}")
+                            raise ValueError(f"Parse JSON impossible: {json_err}")
+
+                    # Validation structure
+                    if not isinstance(email_json, list):
+                        raise ValueError(f"Réponse non-liste: {type(email_json)}")
+                    
+                    if len(email_json) != 4:
+                        st.warning(f"Emails incomplets pour {full_name}: {len(email_json)}/4")
+                        while len(email_json) < 4:
+                            email_json.append({
+                                "subject": f"Email {len(email_json)+1} - {full_name}",
+                                "message": "Email généré automatiquement."
+                            })
+
+                    # Validation emails
+                    for i, email in enumerate(email_json):
+                        if not isinstance(email, dict) or 'subject' not in email or 'message' not in email:
+                            email_json[i] = {
+                                "subject": f"Email {i+1} - {full_name} (corrigé)",
+                                "message": "Email corrigé automatiquement."
+                            }
+
+                    estimated_cost = 0.003 if "sonnet" in model_choice else 0.001
+                    update_stats(success=True, cost_estimate=estimated_cost)
+
+                except Exception as e:
+                    st.warning(f"Erreur pour {full_name} : {e}")
+                    email_json = [
+                        {
+                            "subject": f"Email {i+1} - {full_name} [ERREUR]", 
+                            "message": f"Erreur de génération.\n\nErreur: {str(e)}\n\nVeuillez réessayer."
+                        }
+                        for i in range(4)
+                    ]
+                    update_stats(success=False)
+
+                # Ajout résultats
+                new_row = row.to_dict()
+                for i in range(4):
+                    new_row[f"email_{i+1}_subject"] = email_json[i]["subject"]
+                    new_row[f"email_{i+1}_message"] = email_json[i]["message"].replace("\\n", "\n")
+
+                new_df = pd.DataFrame([new_row])
+                result_df = pd.concat([result_df, new_df], ignore_index=True)
+
+                try:
+                    result_df.to_csv(TEMP_FILE, sep=";", index=False)
+                except Exception as e:
+                    st.warning(f"Erreur sauvegarde : {e}")
+
+                # Affichage moderne des résultats
+                with display_area.container():
+                    st.markdown(f"### 📧 Emails générés pour **{full_name}**")
+                    
+                    for i in range(4):
+                        st.markdown(f"""
+                            <div class="email-card">
+                                <div class="email-subject">
+                                    📧 Email {i+1}: {email_json[i]['subject']}
+                                </div>
+                                <div class="email-body">
+                                    {email_json[i]['message'].replace(chr(10), '<br>')}
+                                </div>
+                            </div>
+                        """, unsafe_allow_html=True)
+
+                # Téléchargement intermédiaire
+                if idx % 10 == 9:
                     try:
-                        if os.path.exists(TEMP_FILE):
-                            os.remove(TEMP_FILE)
+                        with open(TEMP_FILE, "rb") as f:
+                            st.download_button(
+                                "💾 Télécharger progression",
+                                data=f.read(),
+                                file_name=f"emails_progress_{idx+1}.csv",
+                                mime="text/csv",
+                                key=f"dl_{idx}",
+                                use_container_width=True
+                            )
                     except Exception as e:
-                        st.warning(f"⚠️ Impossible de supprimer le fichier temporaire : {e}")
+                        st.warning(f"Erreur téléchargement : {e}")
 
-        finally:
-            st.session_state.generating = False
+                progress_bar.progress((idx + 1) / total)
+                req_used += 1
 
-# Affichage d'informations si pas de fichier
+                if req_used >= QUOTA_DAILY_REQ:
+                    st.warning(f"⚠️ Quota journalier atteint ({QUOTA_DAILY_REQ})")
+                    break
+
+                time.sleep(0.1)
+
+            # Finalisation
+            status_text.markdown("**✅ Génération terminée !**")
+            
+            # Téléchargement final
+            if result_df is not None and len(result_df) > 0:
+                csv = result_df.to_csv(index=False, sep=";").encode("utf-8")
+                st.download_button(
+                    "📥 TÉLÉCHARGER LE FICHIER COMPLET",
+                    data=csv,
+                    file_name=f"emails_silviomotion_{date.today().strftime('%Y%m%d')}.csv",
+                    mime="text/csv",
+                    type="primary",
+                    use_container_width=True
+                )
+                
+                # Nettoyage
+                try:
+                    if os.path.exists(TEMP_FILE):
+                        os.remove(TEMP_FILE)
+                except Exception as e:
+                    st.warning(f"⚠️ Fichier temporaire non supprimé : {e}")
+            
+            st.markdown('</div>', unsafe_allow_html=True)
+
+    finally:
+        st.session_state.generating = False
+
+# PAGE D'ACCUEIL MODERNE
 if uploaded_file is None:
     with col_output:
-        st.info("👆 Uploadez un fichier CSV pour commencer la génération d'emails personnalisés.")
         st.markdown("""
-        <div style='background: linear-gradient(145deg, #1a1a1a, #2d2d2d); border: 1px solid #ff6b35; border-radius: 12px; padding: 20px; margin-top: 20px;'>
-        <h3 style='color: #ff8c42; margin-bottom: 20px;'>📋 Instructions :</h3>
-        <div style='color: #e0e0e0; line-height: 1.6;'>
-        <p><strong style='color: #ff6b35;'>1. Clé API</strong> : Entrez votre clé API Anthropic</p>
-        <p><strong style='color: #ff6b35;'>2. Fichier CSV</strong> : Uploadez votre export Sales Navigator</p>
-        <p><strong style='color: #ff6b35;'>3. Prompt</strong> : Personnalisez le prompt ou utilisez un modèle sauvegardé</p>
-        <p><strong style='color: #ff6b35;'>4. Génération</strong> : Lancez la génération automatique</p>
-        </div>
-        
-        <h3 style='color: #ff8c42; margin-top: 30px; margin-bottom: 20px;'>💡 Fonctionnalités :</h3>
-        <div style='color: #e0e0e0; line-height: 1.6;'>
-        <p>✅ <strong style='color: #ff6b35;'>Prévisualisation en direct</strong> - Testez vos prompts avant génération</p>
-        <p>✅ <strong style='color: #ff6b35;'>Statistiques d'utilisation</strong> - Suivez vos performances et coûts</p>
-        <p>✅ Reprise de session en cas d'interruption</p>
-        <p>✅ Sauvegarde automatique des prompts</p>
-        <p>✅ Téléchargement progressif des résultats</p>
-        <p>✅ Gestion automatique du quota API</p>
-        <p>✅ <strong style='color: #ff6b35;'>Métriques temps réel</strong> pendant la génération</p>
-        </div>
-        </div>
+            <div class="glass-card animate-fadeInUp">
+                <div class="section-title">🚀 Bienvenue sur Silviomotion AI</div>
+                
+                <div style="text-align: center; margin: 2rem 0;">
+                    <div style="font-size: 1.2rem; color: var(--text-secondary); line-height: 1.8;">
+                        <p>🎯 <strong style="color: var(--primary-orange);">Génération automatique</strong> d'emails ultra-personnalisés</p>
+                        <p>🤖 <strong style="color: var(--primary-orange);">Powered by Claude AI</strong> - La plus avancée des IA</p>
+                        <p>📈 <strong style="color: var(--primary-orange);">Analytics en temps réel</strong> - Trackez vos performances</p>
+                        <p>💾 <strong style="color: var(--primary-orange);">Templates intelligents</strong> - Réutilisez vos meilleurs prompts</p>
+                    </div>
+                </div>
+                
+                <div style="background: rgba(255, 107, 53, 0.1); border: 1px solid var(--border-color); border-radius: 12px; padding: 1.5rem; margin: 2rem 0;">
+                    <h4 style="color: var(--secondary-orange); margin-bottom: 1rem;">📋 Guide de démarrage :</h4>
+                    <div style="color: var(--text-secondary); line-height: 1.6;">
+                        <p><strong style="color: var(--primary-orange);">1.</strong> Configurez votre clé API Anthropic</p>
+                        <p><strong style="color: var(--primary-orange);">2.</strong> Uploadez votre fichier CSV Sales Navigator</p>
+                        <p><strong style="color: var(--primary-orange);">3.</strong> Personnalisez votre prompt de génération</p>
+                        <p><strong style="color: var(--primary-orange);">4.</strong> Testez avec la prévisualisation live</p>
+                        <p><strong style="color: var(--primary-orange);">5.</strong> Lancez la génération automatique</p>
+                    </div>
+                </div>
+                
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-top: 2rem;">
+                    <div style="background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 12px; padding: 1.5rem; text-align: center;">
+                        <div style="font-size: 2rem; margin-bottom: 0.5rem;">⚡</div>
+                        <div style="color: var(--primary-orange); font-weight: 600;">Ultra Rapide</div>
+                        <div style="color: var(--text-secondary); font-size: 0.9rem;">Générez des centaines d'emails en minutes</div>
+                    </div>
+                    
+                    <div style="background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 12px; padding: 1.5rem; text-align: center;">
+                        <div style="font-size: 2rem; margin-bottom: 0.5rem;">🎯</div>
+                        <div style="color: var(--primary-orange); font-weight: 600;">Hyper Ciblé</div>
+                        <div style="color: var(--text-secondary); font-size: 0.9rem;">Personnalisation basée sur les données prospect</div>
+                    </div>
+                    
+                    <div style="background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 12px; padding: 1.5rem; text-align: center;">
+                        <div style="font-size: 2rem; margin-bottom: 0.5rem;">📊</div>
+                        <div style="color: var(--primary-orange); font-weight: 600;">Analytics Pro</div>
+                        <div style="color: var(--text-secondary); font-size: 0.9rem;">Métriques de performance en temps réel</div>
+                    </div>
+                </div>
+            </div>
         """, unsafe_allow_html=True)
 
-# Onglet statistiques avancées dans la sidebar
+# SIDEBAR MODERNE
 with st.sidebar:
-    st.markdown("### 📊 Statistiques détaillées")
+    st.markdown("""
+        <div style="text-align: center; padding: 1rem 0 2rem 0;">
+            <h3 style="color: var(--primary-orange); margin-bottom: 0.5rem;">📊 Analytics Pro</h3>
+            <p style="color: var(--text-secondary); font-size: 0.9rem;">Dashboard temps réel</p>
+        </div>
+    """, unsafe_allow_html=True)
+    
     stats = load_stats()
     
     if stats["total_requests"] > 0:
-        st.markdown(f"<div style='color: #e0e0e0;'><strong style='color: #ff8c42;'>Requêtes totales :</strong> {stats['total_requests']}</div>", unsafe_allow_html=True)
-        st.markdown(f"<div style='color: #e0e0e0;'><strong style='color: #ff8c42;'>Succès :</strong> {stats['successful_requests']}</div>", unsafe_allow_html=True)
-        st.markdown(f"<div style='color: #e0e0e0;'><strong style='color: #ff8c42;'>Échecs :</strong> {stats['failed_requests']}</div>", unsafe_allow_html=True)
+        st.markdown(f"""
+            <div style="background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 12px; padding: 1.5rem; margin-bottom: 1rem;">
+                <div style="color: var(--text-secondary); font-size: 0.9rem; margin-bottom: 1rem;">Statistiques globales</div>
+                <div style="color: var(--primary-orange); font-size: 1.5rem; font-weight: 700;">{stats['total_requests']}</div>
+                <div style="color: var(--text-secondary); font-size: 0.8rem;">Requêtes totales</div>
+            </div>
+        """, unsafe_allow_html=True)
         
-        # Coût estimé total
+        success_rate = (stats["successful_requests"] / max(stats["total_requests"], 1)) * 100
+        st.markdown(f"""
+            <div style="background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 12px; padding: 1.5rem; margin-bottom: 1rem;">
+                <div style="color: var(--primary-orange); font-size: 1.5rem; font-weight: 700;">{success_rate:.1f}%</div>
+                <div style="color: var(--text-secondary); font-size: 0.8rem;">Taux de succès</div>
+            </div>
+        """, unsafe_allow_html=True)
+        
         total_cost = sum([day_data.get("cost", 0) for day_data in stats["daily_usage"].values()])
-        st.markdown(f"<div style='color: #e0e0e0;'><strong style='color: #ff8c42;'>Coût estimé :</strong> ${total_cost:.3f}</div>", unsafe_allow_html=True)
+        st.markdown(f"""
+            <div style="background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 12px; padding: 1.5rem; margin-bottom: 1rem;">
+                <div style="color: var(--primary-orange); font-size: 1.5rem; font-weight: 700;">${total_cost:.3f}</div>
+                <div style="color: var(--text-secondary); font-size: 0.8rem;">Coût estimé total</div>
+            </div>
+        """, unsafe_allow_html=True)
         
-        # Graphique linéaire des derniers jours
+        # Graphique évolution
         if len(stats["daily_usage"]) > 1:
-            st.markdown("**Évolution (7 derniers jours) :**")
+            st.markdown("**📈 Évolution (7 jours)**")
             last_days = dict(sorted(stats["daily_usage"].items())[-7:])
             chart_df = pd.DataFrame([
-                {"Date": date_str, "Requêtes": data["requests"], "Coût": data.get("cost", 0)}
+                {"Date": date_str, "Requêtes": data["requests"]}
                 for date_str, data in last_days.items()
             ])
-            st.line_chart(chart_df.set_index("Date"))
+            st.line_chart(chart_df.set_index("Date"), use_container_width=True)
     else:
-        st.info("Aucune statistique disponible")
+        st.info("🔄 Lancez votre première génération pour voir les analytics")
     
-    # Bouton de reset des stats
-    if st.button("🗑️ Reset statistiques"):
+    # Reset button moderne
+    if st.button("🗑️ Reset Analytics", use_container_width=True):
         if os.path.exists(STATS_FILE):
             os.remove(STATS_FILE)
-            st.success("Stats réinitialisées !")
+            st.success("✅ Analytics réinitialisées !")
             st.rerun()
