@@ -1,5 +1,5 @@
 # email_generator_ui.py
-# Version style Claude - Interface élégante et moderne
+# Version style  - Interface élégante et moderne
 
 import streamlit as st
 import pandas as pd
@@ -16,7 +16,7 @@ PROMPT_HISTORY_FILE = "prompt_history.json"
 STATS_FILE = "usage_stats.json"
 
 # STYLES INSPIRÉS DE CLAUDE
-st.set_page_config(page_title="Silviomotion AI", layout="wide", initial_sidebar_state="collapsed")
+st.set_page_config(page_title="Silviomotion Mail", layout="wide", initial_sidebar_state="collapsed")
 st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
