@@ -40,6 +40,8 @@ if 'client' not in st.session_state:
     st.session_state.client = None
 if 'preview_data' not in st.session_state:
     st.session_state.preview_data = None
+if 'generating' not in st.session_state:
+    st.session_state.generating = False
 
 def load_prompt_history():
     """Charge l'historique des prompts depuis le fichier JSON"""
@@ -360,184 +362,132 @@ placeholder_output = col_output.empty()
 
 # Génération des emails
 with col_params:
-# Partie refactorisée : boucle de génération des emails optimisée et stable
-# À intégrer à la place de ta boucle actuelle dans la section « Génération des emails »
+    if df is not None and prompt and st.button("🚀 Générer les emails", type="primary") and not st.session_state.generating:
+        st.session_state.generating = True
+        try:
+            if result_df is None:
+                result_df = df.iloc[:start_idx].copy() if start_idx > 0 else pd.DataFrame()
 
-if 'generating' not in st.session_state:
-    st.session_state.generating = False
+            total = len(df)
+            start_time = time.time()
 
-if df is not None and prompt and st.button("🚀 Générer les emails", type="primary") and not st.session_state.generating:
-    st.session_state.generating = True
-    try:
-        if result_df is None:
-            result_df = df.iloc[:start_idx].copy() if start_idx > 0 else pd.DataFrame()
+            with col_output:
+                progress_bar = st.progress(start_idx / total if total > 0 else 0)
+                status_text = st.empty()
+                display_area = st.empty()
+                req_used = start_idx
 
-        total = len(df)
-        start_time = time.time()
+                for idx in range(start_idx, total):
+                    row = df.iloc[idx]
+                    full_name = get_display_name(df, idx)
 
-        with col_output:
-            progress_bar = st.progress(start_idx / total if total > 0 else 0)
-            status_text = st.empty()
-            display_area = st.empty()
-            req_used = start_idx
+                    status_text.text(f"🔄 Traitement de {full_name} ({idx+1}/{total})")
 
-            for idx in range(start_idx, total):
-                row = df.iloc[idx]
-                full_name = get_display_name(df, idx)
-
-                status_text.text(f"🔄 Traitement de {full_name} ({idx+1}/{total})")
-
-                try:
-                    content_parts = [f"{col}: {row[col]}" for col in df.columns if pd.notna(row[col]) and str(row[col]).strip()]
-                    content = "\n".join(content_parts)
-                    final_prompt = prompt.replace("{{PROSPECT_INFO}}", content)
-
-                    response = st.session_state.client.messages.create(
-                        model=model_choice,
-                        max_tokens=max_tokens,
-                        temperature=temperature,
-                        messages=[{"role": "user", "content": final_prompt}]
-                    )
-
-                    response_text = response.content[0].text.strip() if response.content else ""
-
-                    if response_text.startswith("```json"):
-                        response_text = response_text.replace("```json", "").replace("```", "").strip()
-
-                    email_json = json.loads(response_text)
-
-                    if not isinstance(email_json, list) or len(email_json) != 4:
-                        raise ValueError("La réponse ne contient pas exactement 4 emails")
-
-                    estimated_cost = 0.003 if "sonnet" in model_choice else 0.001
-                    update_stats(success=True, cost_estimate=estimated_cost)
-
-                except Exception as e:
-                    st.warning(f"Erreur pour {full_name} : {e}")
-                    email_json = [
-                        {"subject": f"[ERREUR] - {full_name}", "message": f"Erreur : {e}"}
-                        for _ in range(4)
-                    ]
-                    update_stats(success=False)
-
-                # Ajout au DataFrame résultat
-                new_row = row.to_dict()
-                for i in range(4):
-                    new_row[f"email_{i+1}_subject"] = email_json[i]["subject"]
-                    new_row[f"email_{i+1}_message"] = email_json[i]["message"].replace("\\n", "\n")
-
-                new_df = pd.DataFrame([new_row])
-                result_df = pd.concat([result_df, new_df], ignore_index=True)
-
-                try:
-                    result_df.to_csv(TEMP_FILE, sep=";", index=False)
-                except Exception as e:
-                    st.warning(f"Erreur de sauvegarde temporaire : {e}")
-
-                # Affichage unique dans zone réservée
-                with display_area.container():
-                    st.markdown(f"### 📧 Emails pour {full_name}")
-                    for i in range(4):
-                        with st.expander(f"Email {i+1}: {email_json[i]['subject']}", expanded=(i == 0)):
-                            st.markdown(f"**Objet:** {email_json[i]['subject']}")
-                            st.text_area(
-                                "Message:", 
-                                value=email_json[i]['message'], 
-                                height=150, 
-                                key=f"email_{idx}_{i}",
-                                disabled=True
-                            )
-
-                if idx % 10 == 9:
                     try:
-                        with open(TEMP_FILE, "rb") as f:
-                            st.download_button(
-                                "📅 Télécharger progression intermédiaire",
-                                data=f.read(),
-                                file_name=f"emails_progress_{idx+1}.csv",
-                                mime="text/csv",
-                                key=f"dl_{idx}"
-                            )
-                    except Exception as e:
-                        st.warning(f"Erreur bouton téléchargement : {e}")
+                        content_parts = [f"{col}: {row[col]}" for col in df.columns if pd.notna(row[col]) and str(row[col]).strip()]
+                        content = "\n".join(content_parts)
+                        final_prompt = prompt.replace("{{PROSPECT_INFO}}", content)
 
-                progress_bar.progress((idx + 1) / total)
-                req_used += 1
+                        response = st.session_state.client.messages.create(
+                            model=model_choice,
+                            max_tokens=max_tokens,
+                            temperature=temperature,
+                            messages=[{"role": "user", "content": final_prompt}]
+                        )
 
-                if req_used >= QUOTA_DAILY_REQ:
-                    st.warning(f"Quota atteint ({QUOTA_DAILY_REQ}), arrêt automatique.")
-                    break
+                        response_text = response.content[0].text.strip() if response.content else ""
 
-                time.sleep(0.2)
+                        if response_text.startswith("```json"):
+                            response_text = response_text.replace("```json", "").replace("```", "").strip()
 
-        status_text.text("Génération terminée.")
+                        email_json = json.loads(response_text)
 
-        if result_df is not None and len(result_df) > 0:
-            csv = result_df.to_csv(index=False, sep=";").encode("utf-8")
-            st.download_button(
-                "📅 Télécharger le fichier final",
-                data=csv,
-                file_name=f"emails_silviomotion_{date.today().strftime('%Y%m%d')}.csv",
-                mime="text/csv"
-            )
+                        if not isinstance(email_json, list) or len(email_json) != 4:
+                            raise ValueError("La réponse ne contient pas exactement 4 emails")
 
-            try:
-                if os.path.exists(TEMP_FILE):
-                    os.remove(TEMP_FILE)
-            except Exception as e:
-                st.warning(f"Erreur suppression fichier temporaire : {e}")
-
-    finally:
-        st.session_state.generating = False
+                        estimated_cost = 0.003 if "sonnet" in model_choice else 0.001
+                        update_stats(success=True, cost_estimate=estimated_cost)
 
                     except Exception as e:
-                        st.warning(f"⚠️ Erreur téléchargement : {e}")
+                        st.warning(f"Erreur pour {full_name} : {e}")
+                        email_json = [
+                            {"subject": f"[ERREUR] - {full_name}", "message": f"Erreur : {e}"}
+                            for _ in range(4)
+                        ]
+                        update_stats(success=False)
 
-                # Mettre à jour la progress bar
-                progress_bar.progress((idx + 1) / total)
-                req_used += 1
+                    # Ajout au DataFrame résultat
+                    new_row = row.to_dict()
+                    for i in range(4):
+                        new_row[f"email_{i+1}_subject"] = email_json[i]["subject"]
+                        new_row[f"email_{i+1}_message"] = email_json[i]["message"].replace("\\n", "\n")
 
-                # Vérifier le quota
-                if req_used >= QUOTA_DAILY_REQ:
-                    st.warning(f"⚠️ Quota de {QUOTA_DAILY_REQ} requêtes atteint. Arrêt automatique.")
-                    break
+                    new_df = pd.DataFrame([new_row])
+                    result_df = pd.concat([result_df, new_df], ignore_index=True)
 
-                # Petite pause pour éviter de surcharger l'API
-                time.sleep(0.5)
+                    try:
+                        result_df.to_csv(TEMP_FILE, sep=";", index=False)
+                    except Exception as e:
+                        st.warning(f"Erreur de sauvegarde temporaire : {e}")
 
-            # Finalisation
-            status_text.text("✅ Génération terminée !")
-            
-            # Statistiques finales
-            final_stats = load_stats()
-            total_time = time.time() - start_time
-            with metrics_container:
-                st.success("🎉 Génération terminée !")
-                col_f1, col_f2, col_f3 = st.columns(3)
-                with col_f1:
-                    st.metric("Durée totale", f"{total_time/60:.1f} min")
-                with col_f2:
-                    st.metric("Vitesse moyenne", f"{total_time/(idx-start_idx+1):.1f}s/email")
-                with col_f3:
-                    success_rate = ((req_used - start_idx) / (idx - start_idx + 1)) * 100
-                    st.metric("Taux de succès", f"{success_rate:.1f}%")
-            
-            # Téléchargement final
-            if result_df is not None and len(result_df) > 0:
-                csv = result_df.to_csv(index=False, sep=";").encode("utf-8")
-                st.download_button(
-                    "📥 Télécharger le fichier final complet",
-                    data=csv,
-                    file_name=f"emails_silviomotion_{date.today().strftime('%Y%m%d')}.csv",
-                    mime="text/csv"
-                )
+                    # Affichage unique dans zone réservée
+                    with display_area.container():
+                        st.markdown(f"### 📧 Emails pour {full_name}")
+                        for i in range(4):
+                            with st.expander(f"Email {i+1}: {email_json[i]['subject']}", expanded=(i == 0)):
+                                st.markdown(f"**Objet:** {email_json[i]['subject']}")
+                                st.text_area(
+                                    "Message:", 
+                                    value=email_json[i]['message'], 
+                                    height=150, 
+                                    key=f"email_{idx}_{i}",
+                                    disabled=True
+                                )
+
+                    if idx % 10 == 9:
+                        try:
+                            with open(TEMP_FILE, "rb") as f:
+                                st.download_button(
+                                    "📅 Télécharger progression intermédiaire",
+                                    data=f.read(),
+                                    file_name=f"emails_progress_{idx+1}.csv",
+                                    mime="text/csv",
+                                    key=f"dl_{idx}"
+                                )
+                        except Exception as e:
+                            st.warning(f"Erreur bouton téléchargement : {e}")
+
+                    progress_bar.progress((idx + 1) / total)
+                    req_used += 1
+
+                    if req_used >= QUOTA_DAILY_REQ:
+                        st.warning(f"Quota atteint ({QUOTA_DAILY_REQ}), arrêt automatique.")
+                        break
+
+                    time.sleep(0.2)
+
+                # Finalisation
+                status_text.text("✅ Génération terminée !")
                 
-                # Nettoyer le fichier temporaire
-                try:
-                    if os.path.exists(TEMP_FILE):
-                        os.remove(TEMP_FILE)
-                except Exception as e:
-                    st.warning(f"⚠️ Impossible de supprimer le fichier temporaire : {e}")
+                # Téléchargement final
+                if result_df is not None and len(result_df) > 0:
+                    csv = result_df.to_csv(index=False, sep=";").encode("utf-8")
+                    st.download_button(
+                        "📥 Télécharger le fichier final complet",
+                        data=csv,
+                        file_name=f"emails_silviomotion_{date.today().strftime('%Y%m%d')}.csv",
+                        mime="text/csv"
+                    )
+                    
+                    # Nettoyer le fichier temporaire
+                    try:
+                        if os.path.exists(TEMP_FILE):
+                            os.remove(TEMP_FILE)
+                    except Exception as e:
+                        st.warning(f"⚠️ Impossible de supprimer le fichier temporaire : {e}")
+
+        finally:
+            st.session_state.generating = False
 
 # Affichage d'informations si pas de fichier
 if uploaded_file is None:
