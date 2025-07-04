@@ -239,28 +239,28 @@ with col_params:
     prompt_names = list(prompt_history.keys())
     selected_prompt = st.selectbox("📚 Choisir un prompt enregistré :", ["Nouveau prompt"] + prompt_names)
 
-    default_prompt = """Vous êtes un expert en prospection commerciale pour Silviomotion, une agence de production vidéo spécialisée dans la création de contenu professionnel.
+    default_prompt = """Tu es un expert en prospection commerciale pour Silviomotion, une agence de production vidéo.
 
-Analysez les informations du prospect suivant et générez EXACTEMENT 4 emails de prospection personnalisés :
-
+Informations du prospect :
 {{PROSPECT_INFO}}
 
-Consignes OBLIGATOIRES :
-- Personnalisez chaque email avec les informations spécifiques du prospect
-- Variez les approches : 1) Problématique, 2) Solution, 3) Bénéfice, 4) Social proof
-- Ton professionnel mais humain et engageant
-- Call-to-action clair dans chaque email
-- Objet accrocheur de maximum 50 caractères
+Génère exactement 4 emails de prospection personnalisés en utilisant ces informations.
 
-IMPORTANT : Vous DEVEZ répondre UNIQUEMENT avec un JSON valide contenant exactement 4 emails. Aucun autre texte avant ou après.
+RÈGLES STRICTES :
+1. Réponds SEULEMENT en JSON valide
+2. Aucun texte explicatif avant ou après
+3. Pas de balises XML ou HTML
+4. Exactement 4 emails dans le format demandé
 
-Format de réponse OBLIGATOIRE :
+JSON attendu :
 [
-  {"subject": "Objet email 1", "message": "Contenu complet email 1"},
-  {"subject": "Objet email 2", "message": "Contenu complet email 2"},
-  {"subject": "Objet email 3", "message": "Contenu complet email 3"},
-  {"subject": "Objet email 4", "message": "Contenu complet email 4"}
-]"""
+{"subject": "Objet 1", "message": "Message 1"},
+{"subject": "Objet 2", "message": "Message 2"},
+{"subject": "Objet 3", "message": "Message 3"},
+{"subject": "Objet 4", "message": "Message 4"}
+]
+
+Commence ta réponse directement par [ et termine par ]"""
 
     if selected_prompt != "Nouveau prompt" and selected_prompt in prompt_history:
         default_prompt = prompt_history[selected_prompt]
@@ -415,12 +415,53 @@ with col_params:
                         elif response_text.startswith("```"):
                             response_text = response_text.replace("```", "").strip()
                         
-                        # Tentative de parsing JSON avec gestion d'erreur
-                        try:
-                            email_json = json.loads(response_text)
-                        except json.JSONDecodeError as json_err:
-                            st.error(f"Erreur JSON pour {full_name}. Réponse brute: {response_text[:200]}...")
-                            raise ValueError(f"Impossible de parser JSON: {json_err}")
+                        # Détection et conversion XML vers JSON si nécessaire
+                        if response_text.startswith("<") or "<email" in response_text:
+                            st.warning(f"Réponse XML détectée pour {full_name}, conversion en cours...")
+                            # Conversion basique XML vers JSON
+                            import re
+                            
+                            # Extraire les emails du XML
+                            email_pattern = r'<email\d*>.*?</email\d*>'
+                            emails = re.findall(email_pattern, response_text, re.DOTALL)
+                            
+                            email_json = []
+                            for i, email_xml in enumerate(emails[:4]):  # Limiter à 4 emails
+                                # Extraire subject et message
+                                subject_match = re.search(r'<subject[^>]*>(.*?)</subject[^>]*>', email_xml, re.DOTALL)
+                                message_match = re.search(r'<message[^>]*>(.*?)</message[^>]*>', email_xml, re.DOTALL)
+                                
+                                # Si pas de balises message, prendre tout le contenu après subject
+                                if not message_match:
+                                    content_after_subject = re.sub(r'<subject[^>]*>.*?</subject[^>]*>', '', email_xml, flags=re.DOTALL)
+                                    message_match = re.search(r'>(.*)', content_after_subject.strip(), re.DOTALL)
+                                
+                                subject = subject_match.group(1).strip() if subject_match else f"Email {i+1} pour {full_name}"
+                                message = message_match.group(1).strip() if message_match else "Contenu non disponible"
+                                
+                                # Nettoyer les balises HTML/XML restantes
+                                subject = re.sub(r'<[^>]+>', '', subject).strip()
+                                message = re.sub(r'<[^>]+>', '', message).strip()
+                                
+                                email_json.append({
+                                    "subject": subject,
+                                    "message": message
+                                })
+                            
+                            # Compléter si moins de 4 emails trouvés
+                            while len(email_json) < 4:
+                                email_json.append({
+                                    "subject": f"Email {len(email_json)+1} - {full_name}",
+                                    "message": "Email généré automatiquement suite à une conversion XML."
+                                })
+                                
+                        else:
+                            # Tentative de parsing JSON normal
+                            try:
+                                email_json = json.loads(response_text)
+                            except json.JSONDecodeError as json_err:
+                                st.error(f"Erreur JSON pour {full_name}. Réponse brute: {response_text[:200]}...")
+                                raise ValueError(f"Impossible de parser JSON: {json_err}")
 
                         # Validation de la structure
                         if not isinstance(email_json, list):
