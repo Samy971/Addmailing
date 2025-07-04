@@ -239,25 +239,27 @@ with col_params:
     prompt_names = list(prompt_history.keys())
     selected_prompt = st.selectbox("📚 Choisir un prompt enregistré :", ["Nouveau prompt"] + prompt_names)
 
-    default_prompt = """Vous êtes un expert en prospection commerciale pour Silviomotion, une agence de production vidéo.
+    default_prompt = """Vous êtes un expert en prospection commerciale pour Silviomotion, une agence de production vidéo spécialisée dans la création de contenu professionnel.
 
-Analysez les informations du prospect suivant et générez 4 emails de prospection personnalisés :
+Analysez les informations du prospect suivant et générez EXACTEMENT 4 emails de prospection personnalisés :
 
 {{PROSPECT_INFO}}
 
-Consignes :
-- Personnalisez chaque email en utilisant les informations du prospect
-- Variez les approches (problématique, solution, bénéfice, social proof)
-- Ton professionnel mais humain
-- Call-to-action clair
-- Objet accrocheur
+Consignes OBLIGATOIRES :
+- Personnalisez chaque email avec les informations spécifiques du prospect
+- Variez les approches : 1) Problématique, 2) Solution, 3) Bénéfice, 4) Social proof
+- Ton professionnel mais humain et engageant
+- Call-to-action clair dans chaque email
+- Objet accrocheur de maximum 50 caractères
 
-Répondez UNIQUEMENT au format JSON suivant :
+IMPORTANT : Vous DEVEZ répondre UNIQUEMENT avec un JSON valide contenant exactement 4 emails. Aucun autre texte avant ou après.
+
+Format de réponse OBLIGATOIRE :
 [
-  {"subject": "Objet 1", "message": "Message 1"},
-  {"subject": "Objet 2", "message": "Message 2"},
-  {"subject": "Objet 3", "message": "Message 3"},
-  {"subject": "Objet 4", "message": "Message 4"}
+  {"subject": "Objet email 1", "message": "Contenu complet email 1"},
+  {"subject": "Objet email 2", "message": "Contenu complet email 2"},
+  {"subject": "Objet email 3", "message": "Contenu complet email 3"},
+  {"subject": "Objet email 4", "message": "Contenu complet email 4"}
 ]"""
 
     if selected_prompt != "Nouveau prompt" and selected_prompt in prompt_history:
@@ -388,6 +390,7 @@ with col_params:
                         content = "\n".join(content_parts)
                         final_prompt = prompt.replace("{{PROSPECT_INFO}}", content)
 
+                        # Appel API avec gestion d'erreur renforcée
                         response = st.session_state.client.messages.create(
                             model=model_choice,
                             max_tokens=max_tokens,
@@ -395,24 +398,63 @@ with col_params:
                             messages=[{"role": "user", "content": final_prompt}]
                         )
 
-                        response_text = response.content[0].text.strip() if response.content else ""
-
+                        # Vérification robuste de la réponse
+                        if not response or not response.content or len(response.content) == 0:
+                            raise ValueError("Réponse vide de l'API Claude")
+                        
+                        response_text = response.content[0].text.strip()
+                        
+                        # Debug: afficher la réponse brute en cas de problème
+                        if not response_text:
+                            st.warning(f"Réponse vide pour {full_name}")
+                            raise ValueError("Réponse vide")
+                        
+                        # Nettoyage plus robuste de la réponse
                         if response_text.startswith("```json"):
                             response_text = response_text.replace("```json", "").replace("```", "").strip()
+                        elif response_text.startswith("```"):
+                            response_text = response_text.replace("```", "").strip()
+                        
+                        # Tentative de parsing JSON avec gestion d'erreur
+                        try:
+                            email_json = json.loads(response_text)
+                        except json.JSONDecodeError as json_err:
+                            st.error(f"Erreur JSON pour {full_name}. Réponse brute: {response_text[:200]}...")
+                            raise ValueError(f"Impossible de parser JSON: {json_err}")
 
-                        email_json = json.loads(response_text)
+                        # Validation de la structure
+                        if not isinstance(email_json, list):
+                            raise ValueError(f"La réponse n'est pas une liste: {type(email_json)}")
+                        
+                        if len(email_json) != 4:
+                            st.warning(f"Nombre d'emails incorrect pour {full_name}: {len(email_json)} au lieu de 4")
+                            # Compléter avec des emails par défaut si nécessaire
+                            while len(email_json) < 4:
+                                email_json.append({
+                                    "subject": f"Email supplémentaire {len(email_json)+1} - {full_name}",
+                                    "message": "Email généré automatiquement suite à une réponse incomplète."
+                                })
 
-                        if not isinstance(email_json, list) or len(email_json) != 4:
-                            raise ValueError("La réponse ne contient pas exactement 4 emails")
+                        # Validation de chaque email
+                        for i, email in enumerate(email_json):
+                            if not isinstance(email, dict) or 'subject' not in email or 'message' not in email:
+                                email_json[i] = {
+                                    "subject": f"Email {i+1} - {full_name} (corrigé)",
+                                    "message": "Email corrigé automatiquement suite à une structure invalide."
+                                }
 
                         estimated_cost = 0.003 if "sonnet" in model_choice else 0.001
                         update_stats(success=True, cost_estimate=estimated_cost)
 
                     except Exception as e:
                         st.warning(f"Erreur pour {full_name} : {e}")
+                        # Emails de fallback en cas d'erreur
                         email_json = [
-                            {"subject": f"[ERREUR] - {full_name}", "message": f"Erreur : {e}"}
-                            for _ in range(4)
+                            {
+                                "subject": f"Email {i+1} - {full_name} [ERREUR]", 
+                                "message": f"Une erreur s'est produite lors de la génération de cet email.\n\nErreur: {str(e)}\n\nVeuillez réessayer ou modifier le prompt."
+                            }
+                            for i in range(4)
                         ]
                         update_stats(success=False)
 
